@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Context Pad</title>
+  <link rel="stylesheet" href="./theme.css" />
+</head>
+<body>
+  <!-- topbar injected by app.js -->
+
+  <!-- Settings modal -->
+  <dialog id="settingsModal" aria-labelledby="settingsTitle">
+    <div class="modal-inner">
+      <div class="modal-header">
+        <h2 id="settingsTitle" class="modal-title">Settings</h2>
+        <button type="button" id="closeSettings" class="modal-close" aria-label="Close settings">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <fieldset class="settings-group">
+          <legend>Content width</legend>
+          <div class="width-slider-wrap">
+            <input type="range" id="widthSlider" min="400" max="1400" step="10" />
+            <span class="width-val" id="widthVal"></span>
+          </div>
+        </fieldset>
+        <fieldset class="settings-group">
+          <legend>Notes</legend>
+          <label class="setting-row">
+            <input type="checkbox" id="spellcheckToggle">
+            <span>Spell check</span>
+          </label>
+        </fieldset>
+        <fieldset class="settings-group">
+          <legend>Reader</legend>
+          <label class="setting-row">
+            <input type="checkbox" id="tocSettingToggle">
+            <span>Show Table of Contents</span>
+          </label>
+        </fieldset>
+      </div>
+    </div>
+  </dialog>
+
+  <main class="page" role="main">
+
+    <!-- Tab: Notes -->
+    <div id="panel-notes" class="tab-panel" role="tabpanel" aria-labelledby="tab-notes">
+      <section class="page-intro">
+        <p class="eyebrow">Notes</p>
+        <h1 class="page-title">Your scratchpad.</h1>
+        <p class="page-subtitle">Type, paste, copy. Notes persist locally between sessions.</p>
+      </section>
+      <section class="flow-section" aria-label="Notes editor">
+        <label for="quickNotes"><strong>Quick notes</strong></label>
+        <textarea id="quickNotes" class="textpad" placeholder="Type or paste here..."
+          spellcheck="true" autocorrect="on" autocapitalize="sentences"></textarea>
+        <div class="toolbar">
+          <button id="copyAll" class="btn primary" type="button">Copy all</button>
+          <button id="clearAll" class="btn" type="button">Clear</button>
+          <span id="notesStatus" class="badge" aria-live="polite">Ready.</span>
+          <span id="tokenCount" class="badge token-badge" aria-live="polite" style="display:none"></span>
+        </div>
+      </section>
+      <p class="footer-note">No backend. Saved in browser storage.</p>
+    </div>
+
+    <!-- Tab: MD Reader -->
+    <div id="panel-reader" class="tab-panel" role="tabpanel" aria-labelledby="tab-reader" hidden>
+      <section class="page-intro">
+        <p class="eyebrow">MD Reader</p>
+        <h1 class="page-title" id="docTitle">No file loaded.</h1>
+        <p class="page-subtitle" id="docPath">Pick a local .md file to render it here.</p>
+      </section>
+      <div class="reader-bar">
+        <label for="mdFileInput" class="btn primary">Open .md file</label>
+        <input type="file" id="mdFileInput" accept=".md,.txt" class="sr-only" />
+        <span id="readerTokenCount" class="badge" aria-live="polite" style="display:none"></span>
+        <a href="#" id="loadReadme" class="readme-link">README.md</a>
+      </div>
+      <section class="layout-with-sidebar" id="readerLayout" hidden>
+        <article class="content-wrap">
+          <section class="content" id="mdContent"></section>
+        </article>
+        <aside class="sidebar" aria-label="Section navigation">
+          <h2>Jump to section</h2>
+          <ul class="toc" id="toc"></ul>
+        </aside>
+      </section>
+      <p class="footer-note">File is read locally. Nothing is uploaded.</p>
+    </div>
+
+  </main>
+  <script src="./app.js"></script>
+</body>
+</html>
