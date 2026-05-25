@@ -27,7 +27,7 @@
   bar.className = 'topbar';
   bar.innerHTML = `
     <div class="topbar-inner">
-      <span class="brand">Context Pad</span>
+      <a class="brand" href="https://github.com/KenoLeon/context-pad" target="_blank" rel="noopener noreferrer">Context Pad</a>
       <nav class="topnav" role="tablist" aria-label="Primary navigation">
         ${tabButtonsHtml}
       </nav>

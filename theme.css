@@ -115,6 +115,7 @@ label:focus-visible {
   font-weight: 500;
   letter-spacing: 0.01em;
   color: var(--ink);
+  text-decoration: none;
 }
 
 .topnav {
