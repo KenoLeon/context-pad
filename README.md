@@ -1,7 +1,16 @@
+
+Tired of talking to AIs via a single line input space ?
+
+![alt text](tinyspace.png)
+
 # Context Writer
 
 A lightweight single-page writing and reading tool for working with personal context files.
 No server, no install, no dependencies. Open `index.html` directly in any browser.
+
+## Try it 
+
+[Context Pad](https://kenoleon.github.io/context-pad/)
 
 ## Features
 
