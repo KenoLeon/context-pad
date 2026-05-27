@@ -1,9 +1,8 @@
-
 Tired of talking to AIs via a single line input space ?
 
 ![alt text](tinyspace.png)
 
-# Context Writer
+# Context Pad
 
 A lightweight single-page writing and reading tool for working with personal context files.
 No server, no install, no dependencies. Open `index.html` directly in any browser.
@@ -33,8 +32,10 @@ Four colour themes: **Light**, **Paper**, **Semi-dark** (default), **Dark**.
 Choice persists across sessions.
 
 ### Settings (⚙)
-- **Content width** — Narrow / Medium / Wide / Full controls how much whitespace appears on the sides
+- **Content width** — slider from 400 to 1400 px controls how much whitespace appears on the sides
+- **Font** — choose from System sans, Lora serif, JetBrains Mono, Special Elite (typewriter), or Caveat (script)
 - **Spell check** — toggle browser spell-check on the notes textarea
+- **Table of Contents** — show/hide the TOC sidebar in the MD reader
 
 ## Spell check notes
 
@@ -68,3 +69,4 @@ Spell check in the notes pad relies on the browser and OS:
 | `contextPadNotes` | Notes textarea content |
 | `contextPadWidth` | Content width preset |
 | `contextPadSpellcheck` | Spell check on/off |
+| `contextPadFont` | Selected font |

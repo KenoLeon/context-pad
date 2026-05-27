@@ -12,10 +12,17 @@
   const WIDTH_KEY      = 'contextPadWidth';
   const SPELLCHECK_KEY = 'contextPadSpellcheck';
   const TOC_KEY        = 'contextPadTocVisible';
+  const FONT_KEY       = 'contextPadFont';
   const DEFAULT_THEME  = 'semi-dark';
   const DEFAULT_WIDTH_PX = 1100;
   const WIDTH_MIN = 400;
   const WIDTH_MAX = 1400;
+  const DEFAULT_FONT  = 'sans';
+  const VALID_FONTS   = ['sans', 'serif', 'mono', 'typewriter', 'script'];
+  const FONTSIZE_KEY     = 'contextPadFontSize';
+  const DEFAULT_FONTSIZE = 16;
+  const FONTSIZE_MIN     = 13;
+  const FONTSIZE_MAX     = 22;
 
   // ── Build Topbar ───────────────────────────────────────────────────────────
   const tabButtonsHtml = TABS.map(t =>
@@ -27,7 +34,10 @@
   bar.className = 'topbar';
   bar.innerHTML = `
     <div class="topbar-inner">
-      <a class="brand" href="https://github.com/KenoLeon/context-pad" target="_blank" rel="noopener noreferrer">Context Pad</a>
+      <div class="brand-wrap">
+        <span class="brand">Context Pad</span>
+        <span class="brand-sub">Your scratchpad.</span>
+      </div>
       <nav class="topnav" role="tablist" aria-label="Primary navigation">
         ${tabButtonsHtml}
       </nav>
@@ -116,6 +126,41 @@
 
   widthSlider.addEventListener('input', function () {
     setWidth(widthSlider.value);
+  });
+
+  // ── Font ──────────────────────────────────────────────────────────
+  function setFont(font) {
+    document.body.setAttribute('data-font', font);
+    localStorage.setItem(FONT_KEY, font);
+    document.querySelectorAll('[name="bodyFont"]').forEach(function (r) {
+      r.checked = r.value === font;
+    });
+  }
+
+  var storedFont = localStorage.getItem(FONT_KEY);
+  setFont(VALID_FONTS.includes(storedFont) ? storedFont : DEFAULT_FONT);
+
+  document.addEventListener('change', function (e) {
+    if (e.target.name === 'bodyFont') { setFont(e.target.value); }
+  });
+
+  // ── Font Size ───────────────────────────────────────────────────
+  var fontSizeSlider = document.getElementById('fontSizeSlider');
+  var fontSizeVal    = document.getElementById('fontSizeVal');
+
+  function setFontSize(px) {
+    px = Math.max(FONTSIZE_MIN, Math.min(FONTSIZE_MAX, parseInt(px, 10) || DEFAULT_FONTSIZE));
+    document.documentElement.style.setProperty('--content-font-size', px + 'px');
+    localStorage.setItem(FONTSIZE_KEY, px);
+    fontSizeSlider.value = px;
+    fontSizeVal.textContent = px + ' px';
+  }
+
+  var storedFontSize = parseInt(localStorage.getItem(FONTSIZE_KEY), 10);
+  setFontSize(isNaN(storedFontSize) ? DEFAULT_FONTSIZE : storedFontSize);
+
+  fontSizeSlider.addEventListener('input', function () {
+    setFontSize(fontSizeSlider.value);
   });
 
   // ── Settings Modal ─────────────────────────────────────────────────────────
@@ -223,13 +268,11 @@
       notesStatus.textContent = 'Already empty.';
       return;
     }
-    if (window.confirm('Clear all notes?')) {
-      notesArea.value = '';
-      localStorage.removeItem(NOTES_KEY);
-      notesArea.focus();
-      notesStatus.textContent = 'Cleared.';
-      updateNotesCount();
-    }
+    notesArea.value = '';
+    localStorage.removeItem(NOTES_KEY);
+    notesArea.focus();
+    notesStatus.textContent = 'Cleared.';
+    updateNotesCount();
   });
 
   // ── Markdown Parser ────────────────────────────────────────────────────────

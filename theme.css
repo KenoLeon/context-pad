@@ -11,6 +11,7 @@
   --accent: #4a4a4a;
   --accent-strong: #333333;
   --focus: #595959;
+  --border-dim: #c5c5c5;
 }
 
 [data-theme="semi-dark"] {
@@ -23,6 +24,7 @@
   --accent: #7e9caf;
   --accent-strong: #a3b4bf;
   --focus: #a3b4bf;
+  --border-dim: #152738;
 }
 
 [data-theme="paper"] {
@@ -35,6 +37,7 @@
   --accent: #595048;
   --accent-strong: #403831;
   --focus: #8c837b;
+  --border-dim: #c5bdb5;
 }
 
 [data-theme="dark"] {
@@ -47,6 +50,7 @@
   --accent: #bcc2cc;
   --accent-strong: #eceff4;
   --focus: #d2d8e2;
+  --border-dim: #282d33;
 }
 
 * {
@@ -75,10 +79,15 @@ a:hover {
 
 a:focus-visible,
 button:focus-visible,
-textarea:focus-visible,
 label:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+.textpad:focus,
+.textpad:focus-visible {
+  outline: none;
+  border-color: var(--line);
 }
 
 /* ── Topbar ───────────────────────────────────────────────── */
@@ -94,7 +103,7 @@ label:focus-visible {
 .topbar-inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0.85rem 1rem;
+  padding: 0.85rem 1rem 0;
   display: flex;
   gap: 0.75rem;
   align-items: flex-end;
@@ -107,6 +116,16 @@ label:focus-visible {
   align-items: center;
   gap: 0.45rem;
   flex: 0 0 auto;
+  align-self: center;
+  padding-bottom: 0.55rem;
+}
+
+.brand-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  align-self: center;
+  padding-bottom: 0.55rem;
 }
 
 .brand {
@@ -116,6 +135,14 @@ label:focus-visible {
   letter-spacing: 0.01em;
   color: var(--ink);
   text-decoration: none;
+}
+
+.brand-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1;
 }
 
 .topnav {
@@ -315,12 +342,12 @@ label:focus-visible {
   width: 100%;
   min-height: 58vh;
   resize: vertical;
-  border: 1px solid var(--line);
+  border: 1px solid var(--border-dim);
   border-radius: 2px;
   padding: 0.9rem;
   background: var(--surface);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-body, var(--font-sans));
   font-size: 1rem;
   line-height: 1.6;
 }
@@ -563,6 +590,20 @@ label:focus-visible {
 
 .page { max-width: var(--page-max-w, 1100px); }
 
+/* ── Font Body ───────────────────────────────────── */
+
+body[data-font="sans"]       { --font-body: "Public Sans", system-ui, sans-serif; }
+body[data-font="serif"]      { --font-body: "Lora", Georgia, serif; }
+body[data-font="mono"]       { --font-body: "JetBrains Mono", monospace; }
+body[data-font="typewriter"] { --font-body: "Special Elite", "Courier New", monospace; }
+body[data-font="script"]     { --font-body: "Caveat", cursive; }
+
+.textpad,
+.content {
+  font-family: var(--font-body, var(--font-sans));
+  font-size: var(--content-font-size, 1rem);
+}
+
 /* ── Settings Button ──────────────────────────────────────── */
 
 .settings-btn {
@@ -687,6 +728,51 @@ dialog::backdrop {
 
 .setting-row input {
   accent-color: var(--accent);
+}
+
+/* ── Font Options ─────────────────────────────────── */
+
+.font-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  margin-top: 0.45rem;
+}
+
+.font-opt {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.95rem;
+}
+
+.font-opt input {
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.font-size-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+  border-top: 1px solid var(--border-dim);
+  padding-top: 0.6rem;
+}
+
+.font-size-row label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.font-size-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 4px;
 }
 
 /* ── Token Badge ──────────────────────────────────────────── */

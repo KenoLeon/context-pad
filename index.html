@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <title>Context Pad</title>
-
-
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=JetBrains+Mono:ital,wght@0,400;0,500&family=Lora:ital,wght@0,400;0,600;1,400&family=Special+Elite&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./theme.css" />
 </head>
 <body>
@@ -25,6 +26,21 @@
           <div class="width-slider-wrap">
             <input type="range" id="widthSlider" min="400" max="1400" step="10" />
             <span class="width-val" id="widthVal"></span>
+          </div>
+        </fieldset>
+        <fieldset class="settings-group">
+          <legend>Font</legend>
+          <div class="font-options">
+            <label class="font-opt"><input type="radio" name="bodyFont" value="sans"> <span style="font-family:system-ui,sans-serif">Sans (default)</span></label>
+            <label class="font-opt"><input type="radio" name="bodyFont" value="serif"> <span style="font-family:'Lora',Georgia,serif">Lora serif</span></label>
+            <label class="font-opt"><input type="radio" name="bodyFont" value="mono"> <span style="font-family:'JetBrains Mono',monospace">JetBrains Mono</span></label>
+            <label class="font-opt"><input type="radio" name="bodyFont" value="typewriter"> <span style="font-family:'Special Elite',monospace">Special Elite</span></label>
+            <label class="font-opt"><input type="radio" name="bodyFont" value="script"> <span style="font-family:'Caveat',cursive">Caveat script</span></label>
+          </div>
+          <div class="font-size-row">
+            <label for="fontSizeSlider">Size</label>
+            <input type="range" id="fontSizeSlider" min="13" max="22" step="1" />
+            <span class="width-val" id="fontSizeVal"></span>
           </div>
         </fieldset>
         <fieldset class="settings-group">
@@ -49,13 +65,7 @@
 
     <!-- Tab: Notes -->
     <div id="panel-notes" class="tab-panel" role="tabpanel" aria-labelledby="tab-notes">
-      <section class="page-intro">
-        <p class="eyebrow">Notes</p>
-        <h1 class="page-title">Your scratchpad.</h1>
-        <p class="page-subtitle">Type, paste, copy. Notes persist locally between sessions.</p>
-      </section>
       <section class="flow-section" aria-label="Notes editor">
-        <label for="quickNotes"><strong>Quick notes</strong></label>
         <textarea id="quickNotes" class="textpad" placeholder="Type or paste here..."
           spellcheck="true" autocorrect="on" autocapitalize="sentences"></textarea>
         <div class="toolbar">
