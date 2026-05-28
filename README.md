@@ -1,6 +1,6 @@
 Tired of talking to AIs via a single line input space ?
 
-![alt text](tinyspace.png)
+![alt text](https://kenoleon.github.io/context-pad/tinyspace.png)
 
 # Context Pad
 
@@ -10,6 +10,20 @@ No server, no install, no dependencies. Open `index.html` directly in any browse
 ## Try it 
 
 [Context Pad](https://kenoleon.github.io/context-pad/)
+
+
+
+## Screenshots
+
+
+![context-pad](https://kenoleon.github.io/context-pad/screen_pad.png)
+
+
+![context-pad_02](https://kenoleon.github.io/context-pad/screen_read.png)
+
+
+
+
 
 ## Features
 
