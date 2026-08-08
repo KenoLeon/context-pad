@@ -23,6 +23,8 @@ The MD Reader tab is the other half of the loop: open a `.md` file — a
 spec, an exported chat, a README — and read it formatted, with a
 jump-to-section TOC, before deciding what to paste in next.
 
+![Drafting a prompt in Context Pad, with live token count before copying it out](https://kenoleon.github.io/context-pad/screen_workflow.png)
+
 ## Try it 
 
 [Context Pad](https://kenoleon.github.io/context-pad/)
