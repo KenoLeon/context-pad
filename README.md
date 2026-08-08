@@ -4,8 +4,24 @@ Tired of talking to AIs via a single line input space ?
 
 # Context Pad
 
-A lightweight single-page writing and reading tool for working with personal context files.
-No server, no install, no dependencies. Open `index.html` directly in any browser.
+Draft and read long-form text locally, then paste it into any AI chat.
+No server, no install, no dependencies. Open `index.html` directly in
+any browser.
+
+## The workflow
+
+Chat inputs are built for short messages, not for drafting a system
+prompt, writing up a bug report, or assembling a wall of context before
+you paste it in. Context Pad is the scratchpad in between:
+
+1. **Write** in the Notes tab — a real textarea, not a one-line box.
+2. **Check the size** — live token/word count tells you if it'll fit
+   before you paste.
+3. **Copy all** and hand it to whichever AI you're talking to.
+
+The MD Reader tab is the other half of the loop: open a `.md` file — a
+spec, an exported chat, a README — and read it formatted, with a
+jump-to-section TOC, before deciding what to paste in next.
 
 ## Try it 
 
@@ -28,10 +44,12 @@ No server, no install, no dependencies. Open `index.html` directly in any browse
 ## Features
 
 ### Notes pad
-Scratchpad with auto-save to browser storage. Notes survive between sessions.
-- Copy all to clipboard
+Where you draft. Auto-saves to browser storage as you type, so notes
+survive between sessions — but the point is getting text out, not
+storing it.
+- **Copy all** to clipboard
+- Live **token and word count** so you know it'll fit before you paste
 - Clear with confirmation
-- Live **token and word count** in the toolbar
 - Spell check via browser (toggle in Settings)
 
 ### MD Reader
@@ -84,3 +102,5 @@ Spell check in the notes pad relies on the browser and OS:
 | `contextPadWidth` | Content width preset |
 | `contextPadSpellcheck` | Spell check on/off |
 | `contextPadFont` | Selected font |
+| `contextPadFontSize` | Selected font size |
+| `contextPadTocVisible` | TOC sidebar shown/hidden in MD reader |
