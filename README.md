@@ -79,12 +79,6 @@ Spell check in the notes pad relies on the browser and OS:
 - If underlines are not appearing, right-click the textarea → Check Spelling (Chrome) or enable spell check in browser settings
 - Grammar checking is not available without a third-party API — the browser only flags spelling
 
-## Planned / future tabs
-
-- **Caveman mode** — strip prepositions and filler words to compress context file token count
-- **Diff view** — compare two versions of a context file side by side
-- **Export** — download notes as `.md` with a timestamped header
-
 ## Files
 
 | File | Purpose |
