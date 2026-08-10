@@ -1,0 +1,19 @@
+{
+  "name": "context-pad-mcp",
+  "version": "0.1.0",
+  "description": "Local MCP server + live bridge for Context Pad (read_note, show_doc)",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "context-pad-mcp": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ws": "^8.21.3",
+    "zod": "^3.25.76"
+  }
+}

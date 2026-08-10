@@ -71,6 +71,14 @@ Choice persists across sessions.
 - **Spell check** — toggle browser spell-check on the notes textarea
 - **Table of Contents** — show/hide the TOC sidebar in the MD reader
 
+## MCP (optional)
+
+Want an AI agent to read your notes and push formatted docs into the
+Reader tab directly — no copy-paste, no save-then-open? See
+[`mcp-server/`](mcp-server/) for a small local companion server
+(`read_note`, `show_doc`) you can register with Claude Code. Opt-in only —
+the plain static app above works exactly the same with or without it.
+
 ## Spell check notes
 
 Spell check in the notes pad relies on the browser and OS:
@@ -87,6 +95,7 @@ Spell check in the notes pad relies on the browser and OS:
 | `theme.css` | Colour themes and all layout styles |
 | `app.js` | All behaviour: topbar, tabs, theme, width, notes, MD reader, settings |
 | `README.md` | This file |
+| `mcp-server/` | Optional local MCP server — see [`mcp-server/README.md`](mcp-server/README.md) |
 
 ## Storage keys (localStorage)
 

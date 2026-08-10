@@ -442,4 +442,37 @@
       .catch(function () { docTitle.textContent = 'Could not load README.md.'; });
   });
 
+  // ── MCP Bridge ─────────────────────────────────────────────────────────────
+  // Optional: only connects when Context Pad is served locally by
+  // mcp-server/ (see README). No-ops on GitHub Pages / file:// — an AI agent
+  // can then read_note the Notes tab and show_doc into the Reader tab live.
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    try {
+      var wsProto = location.protocol === 'https:' ? 'wss://' : 'ws://';
+      var bridge  = new WebSocket(wsProto + location.host + '/ws');
+
+      bridge.addEventListener('open', function () {
+        bridge.send(JSON.stringify({ type: 'notes', content: notesArea.value }));
+      });
+
+      bridge.addEventListener('message', function (e) {
+        var msg;
+        try { msg = JSON.parse(e.data); } catch (err) { return; }
+        if (msg.type === 'show_doc') {
+          displayMd(msg.content, msg.title || 'From agent');
+          docPath.textContent = 'Pushed from an AI agent via MCP';
+          switchTab('reader');
+        }
+      });
+
+      notesArea.addEventListener('input', function () {
+        if (bridge.readyState === WebSocket.OPEN) {
+          bridge.send(JSON.stringify({ type: 'notes', content: notesArea.value }));
+        }
+      });
+    } catch (e) {
+      // No local MCP bridge available — Notes and Reader still work normally.
+    }
+  }
+
 })();
