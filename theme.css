@@ -730,6 +730,47 @@ dialog::backdrop {
   accent-color: var(--accent);
 }
 
+.setting-row input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin: 0.15rem 0 0.55rem;
+}
+
+.save-dir-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.save-dir-row label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.save-dir-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+
+.save-dir-row input[type="text"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── Font Options ─────────────────────────────────── */
 
 .font-options {

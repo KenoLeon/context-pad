@@ -18,6 +18,11 @@ thing you run locally only if you want the live MCP bridge.
   - **`read_note`** — returns whatever is currently in the Notes tab.
   - **`show_doc(content, title?)`** — pushes markdown into the Reader tab of
     any connected tab and switches it there automatically.
+- By default, every `show_doc` is also saved as a timestamped `.md` file in
+  `~/.context-pad/docs/` — so pushed docs survive a page refresh instead of
+  only existing live in the browser. Toggle this off, or change the folder,
+  from Settings → Agent docs (only shown/enabled while a tab is connected).
+  Config persists in `~/.context-pad/config.json`.
 
 If no Context Pad tab is open when an agent calls `show_doc`, the tool tells
 the agent that, instead of silently doing nothing.

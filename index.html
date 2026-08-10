@@ -57,6 +57,18 @@
             <span>Show Table of Contents</span>
           </label>
         </fieldset>
+        <fieldset class="settings-group" id="agentDocsGroup">
+          <legend>Agent docs</legend>
+          <p class="settings-hint" id="agentDocsHint">Only available when Context Pad is running via mcp-server — not connected right now.</p>
+          <label class="setting-row">
+            <input type="checkbox" id="saveDocsToggle" disabled>
+            <span>Save docs pushed by an agent to disk</span>
+          </label>
+          <div class="save-dir-row">
+            <label for="saveDocsDir">Folder</label>
+            <input type="text" id="saveDocsDir" disabled placeholder="~/.context-pad/docs">
+          </div>
+        </fieldset>
         <p class="footer-note"><a href="https://github.com/KenoLeon/context-pad" target="_blank" rel="noopener noreferrer">Context Pad on GitHub</a></p>
       </div>
     </div>

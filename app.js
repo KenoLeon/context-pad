@@ -446,6 +446,10 @@
   // Optional: only connects when Context Pad is served locally by
   // mcp-server/ (see README). No-ops on GitHub Pages / file:// — an AI agent
   // can then read_note the Notes tab and show_doc into the Reader tab live.
+  var agentDocsHint = document.getElementById('agentDocsHint');
+  var saveDocsToggle = document.getElementById('saveDocsToggle');
+  var saveDocsDir     = document.getElementById('saveDocsDir');
+
   if (location.protocol === 'http:' || location.protocol === 'https:') {
     try {
       var wsProto = location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -462,6 +466,12 @@
           displayMd(msg.content, msg.title || 'From agent');
           docPath.textContent = 'Pushed from an AI agent via MCP';
           switchTab('reader');
+        } else if (msg.type === 'config') {
+          agentDocsHint.textContent = 'Docs an agent pushes via show_doc are saved here.';
+          saveDocsToggle.disabled = false;
+          saveDocsDir.disabled = false;
+          saveDocsToggle.checked = !!msg.saveDocs;
+          saveDocsDir.value = msg.saveDir || '';
         }
       });
 
@@ -470,6 +480,19 @@
           bridge.send(JSON.stringify({ type: 'notes', content: notesArea.value }));
         }
       });
+
+      function sendAgentDocsConfig() {
+        if (bridge.readyState === WebSocket.OPEN) {
+          bridge.send(JSON.stringify({
+            type: 'config',
+            saveDocs: saveDocsToggle.checked,
+            saveDir: saveDocsDir.value
+          }));
+        }
+      }
+
+      saveDocsToggle.addEventListener('change', sendAgentDocsConfig);
+      saveDocsDir.addEventListener('change', sendAgentDocsConfig);
     } catch (e) {
       // No local MCP bridge available — Notes and Reader still work normally.
     }
