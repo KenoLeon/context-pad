@@ -37,9 +37,12 @@ your scratchpad regardless of which repo you're in):
 claude mcp add context-pad -s user -- node /absolute/path/to/context-pad/mcp-server/server.js
 ```
 
-Claude Code will start the server itself when needed. To run it manually
-instead (e.g. to just browse to the live-synced page without an agent
-attached):
+Claude Code spawns the server the moment a session connects to it — the
+HTTP+WS bridge (`http://localhost:4173`) is already live as soon as *any*
+Claude Code session with `context-pad` registered is running, before you've
+asked it anything. You don't need to `npm start` it yourself while working
+in Claude Code. Only run it manually if you want the page live with no
+agent session open at all:
 
 ```bash
 npm start
@@ -47,6 +50,25 @@ npm start
 ```
 
 Port defaults to `4173`; override with `CONTEXT_PAD_PORT=5000 npm start`.
+
+**Important:** the server's registration only takes effect for sessions
+started *after* you run `claude mcp add` — an already-running session (e.g.
+one you had open while registering) won't see it. Start a new session (new
+terminal, `claude`) to pick it up.
+
+## Try it
+
+1. Have any Claude Code session with `context-pad` registered running, then
+   open `http://localhost:4173` in a browser.
+2. Ask it: *"Make a dummy .md file and show it in my context pad."* The
+   Reader tab should switch to it automatically.
+3. Type a couple sentences into the Notes tab in that browser tab.
+4. Ask the same session: *"Read my context pad notes and save them to a
+   file."*
+
+If it doesn't reach for the tool from natural phrasing, name it directly —
+*"use the context-pad show_doc tool"* / *"...read_note tool"* — that always
+works.
 
 ## Notes
 
@@ -56,3 +78,18 @@ Port defaults to `4173`; override with `CONTEXT_PAD_PORT=5000 npm start`.
   connecting when there's nothing to connect to).
 - `read_note` reflects the last content any connected tab sent — single-user,
   local use is the assumed case, not multi-tab sync.
+- **The server only runs while a Claude Code session that spawned it is
+  alive** — it's a child process of that session, not a standalone daemon.
+  Close every Claude Code session and `localhost:4173` goes dark until a new
+  one starts. If you want it reachable all the time regardless of whether an
+  agent session is open, that needs turning the HTTP/WS half into an actual
+  background service (e.g. a `launchd` agent on macOS) decoupled from the
+  per-session MCP spawn — not built yet, worth doing only if this limitation
+  actually gets in the way day to day.
+- If `claude mcp add` fails with `command not found: claude`, the CLI likely
+  only exists bundled inside the VS Code extension
+  (`~/.vscode/extensions/anthropic.claude-code-*/resources/native-binary/claude`)
+  and isn't on your shell `PATH`. Fix: `npm install -g @anthropic-ai/claude-code`
+  (if that hits an `EACCES` permissions error, your global npm prefix isn't
+  user-writable — run `npm config set prefix ~/.npm-global` and add
+  `~/.npm-global/bin` to your `PATH` first).
