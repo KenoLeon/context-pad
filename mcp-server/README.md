@@ -27,6 +27,12 @@ thing you run locally only if you want the live MCP bridge.
 If no Context Pad tab is open when an agent calls `show_doc`, the tool tells
 the agent that, instead of silently doing nothing.
 
+## Requirements
+
+- Node.js 18 or later (required by `@modelcontextprotocol/sdk`).
+- [Claude Code](https://github.com/anthropics/claude-code) CLI, or another
+  MCP-aware client such as Claude Desktop.
+
 ## Setup
 
 ```bash
@@ -60,6 +66,32 @@ Port defaults to `4173`; override with `CONTEXT_PAD_PORT=5000 npm start`.
 started *after* you run `claude mcp add` — an already-running session (e.g.
 one you had open while registering) won't see it. Start a new session (new
 terminal, `claude`) to pick it up.
+
+### Claude Desktop
+
+Add an entry to Claude Desktop's config file (Settings → Developer → Edit
+Config, or directly at `~/Library/Application Support/Claude/claude_desktop_config.json`
+on macOS):
+
+```json
+{
+  "mcpServers": {
+    "context-pad": {
+      "command": "node",
+      "args": ["/absolute/path/to/context-pad/mcp-server/server.js"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop to pick it up. Unlike Claude Code, Claude Desktop
+keeps the server running as long as the app is open, not per-session.
+
+### Uninstalling
+
+```bash
+claude mcp remove context-pad -s user
+```
 
 ## Try it
 
