@@ -3,6 +3,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -79,7 +80,8 @@ const httpServer = http.createServer((req, res) => {
   const filePath = path.join(REPO_ROOT, urlPath);
 
   // Don't serve anything outside the repo root (path traversal guard)
-  if (!filePath.startsWith(REPO_ROOT)) {
+  const relative = path.relative(REPO_ROOT, filePath);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
@@ -140,8 +142,21 @@ wss.on('connection', (ws) => {
   ws.on('close', () => clients.delete(ws));
 });
 
-httpServer.listen(PORT, () => {
+function openBrowser(url) {
+  const [cmd, args] =
+    process.platform === 'win32' ? ['cmd', ['/c', 'start', '', url]] :
+    process.platform === 'darwin' ? ['open', [url]] :
+    ['xdg-open', [url]];
+  const child = spawn(cmd, args, { stdio: 'ignore', detached: true });
+  child.on('error', (err) => {
+    console.error(`[context-pad-mcp] Could not auto-open browser: ${err.message}`);
+  });
+  child.unref();
+}
+
+httpServer.listen(PORT, '127.0.0.1', () => {
   console.error(`[context-pad-mcp] Serving Context Pad on http://localhost:${PORT}`);
+  openBrowser(`http://localhost:${PORT}`);
 });
 
 // ── MCP tools ────────────────────────────────────────────────────────────────
