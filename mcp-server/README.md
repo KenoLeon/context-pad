@@ -61,6 +61,9 @@ npm start
 ```
 
 Port defaults to `4173`; override with `CONTEXT_PAD_PORT=5000 npm start`.
+It never opens a browser tab on its own — set `CONTEXT_PAD_AUTO_OPEN=1` in
+the registered command's env if you want the winning session to pop one open
+automatically.
 
 **Important:** the server's registration only takes effect for sessions
 started *after* you run `claude mcp add` — an already-running session (e.g.

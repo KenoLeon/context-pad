@@ -231,7 +231,11 @@ httpServer.on('error', (err) => {
 
 httpServer.listen(PORT, '127.0.0.1', () => {
   console.error(`[context-pad-mcp] Serving Context Pad on http://localhost:${PORT}`);
-  if (!process.env.CONTEXT_PAD_NO_OPEN) {
+  // Opt-in, not opt-out: this fires once per machine, on whichever Claude
+  // Code session happens to win the port first — with -s user registration
+  // that's essentially any session you start, anywhere. Auto-popping a
+  // browser tab on that is more surprising than convenient by default.
+  if (process.env.CONTEXT_PAD_AUTO_OPEN) {
     openBrowser(`http://localhost:${PORT}`);
   }
   resolveIsPrimary(true);
