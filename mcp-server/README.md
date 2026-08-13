@@ -107,6 +107,18 @@ If it doesn't reach for the tool from natural phrasing, name it directly —
 *"use the context-pad show_doc tool"* / *"...read_note tool"* — that always
 works.
 
+## Multiple sessions
+
+If you run more than one Claude Code session at once (common if you work
+across several projects), each has `context-pad` registered and each spawns
+its own `server.js`. Only the first one can actually bind port `4173` — that
+one becomes the "primary" and runs the real HTTP+WS server. Every other
+session's instance notices the port's taken and quietly becomes a proxy,
+forwarding `read_note`/`show_doc` to the primary over local HTTP instead of
+failing. So `read_note`/`show_doc` work the same from any session; there's
+just one browser tab and one shared state behind whichever session got there
+first.
+
 ## Notes
 
 - Works only with a Context Pad tab open at the server's URL — the hosted

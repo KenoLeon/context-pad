@@ -74,9 +74,77 @@ function timestampedFilename(title) {
 let currentNotes = '';
 const clients = new Set();
 
-// ── Static file server + WS upgrade ─────────────────────────────────────────
+function broadcast(message) {
+  const payload = JSON.stringify(message);
+  let sent = 0;
+  for (const ws of clients) {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(payload);
+      sent++;
+    }
+  }
+  return sent;
+}
+
+function configMessage() {
+  return { type: 'config', saveDocs: config.saveDocs, saveDir: config.saveDir };
+}
+
+// Shared by the in-process MCP tool call (when this instance owns the port)
+// and the /internal/show_doc route (when another instance forwards to us
+// because we're the one that owns the port — see the primary/secondary
+// section below).
+async function handleShowDoc(content, title) {
+  const sent = broadcast({ type: 'show_doc', content, title: title || 'From agent' });
+  const lines = [];
+
+  if (sent === 0) {
+    lines.push(`No Context Pad tab is currently connected at http://localhost:${PORT}. Ask the user to open it, then try again.`);
+  } else {
+    lines.push(`Pushed to ${sent} connected Context Pad tab(s).`);
+  }
+
+  if (config.saveDocs) {
+    try {
+      fs.mkdirSync(config.saveDir, { recursive: true });
+      const filePath = path.join(config.saveDir, timestampedFilename(title));
+      fs.writeFileSync(filePath, content);
+      lines.push(`Saved to ${filePath}.`);
+    } catch (err) {
+      lines.push(`Could not save to disk (${config.saveDir}): ${err.message}`);
+    }
+  }
+
+  return { text: lines.join(' ') };
+}
+
+// ── Static file server + WS upgrade + internal proxy routes ────────────────
 const httpServer = http.createServer((req, res) => {
   const urlPath = req.url === '/' ? '/index.html' : req.url.split('?')[0];
+
+  if (req.method === 'GET' && urlPath === '/internal/notes') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ content: currentNotes }));
+    return;
+  }
+
+  if (req.method === 'POST' && urlPath === '/internal/show_doc') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      let parsed;
+      try { parsed = JSON.parse(body); } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+        return;
+      }
+      const result = await handleShowDoc(parsed.content, parsed.title);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    });
+    return;
+  }
+
   const filePath = path.join(REPO_ROOT, urlPath);
 
   // Don't serve anything outside the repo root (path traversal guard)
@@ -100,22 +168,10 @@ const httpServer = http.createServer((req, res) => {
 });
 
 const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-
-function broadcast(message) {
-  const payload = JSON.stringify(message);
-  let sent = 0;
-  for (const ws of clients) {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(payload);
-      sent++;
-    }
-  }
-  return sent;
-}
-
-function configMessage() {
-  return { type: 'config', saveDocs: config.saveDocs, saveDir: config.saveDir };
-}
+// ws re-emits the underlying HTTP server's bind failure as its own 'error'
+// event; without a listener here that's a second unhandled-error crash on
+// top of httpServer's — the real handling happens below.
+wss.on('error', () => {});
 
 wss.on('connection', (ws) => {
   clients.add(ws);
@@ -154,10 +210,48 @@ function openBrowser(url) {
   child.unref();
 }
 
+// ── Primary/secondary: multiple Claude Code sessions can each have
+// context-pad registered and each spawns its own server.js. Only one can
+// actually bind the port — that one ("primary") runs the real HTTP+WS
+// server. Every other instance ("secondary") notices the bind failed and
+// forwards its tool calls to the primary over local HTTP instead of
+// crashing, so read_note/show_doc keep working no matter which session
+// you're in.
+let resolveIsPrimary;
+const isPrimaryPromise = new Promise((resolve) => { resolveIsPrimary = resolve; });
+
+httpServer.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`[context-pad-mcp] Port ${PORT} is already in use by another context-pad instance — running as a proxy to it instead.`);
+  } else {
+    console.error('[context-pad-mcp] HTTP server error:', err.message);
+  }
+  resolveIsPrimary(false);
+});
+
 httpServer.listen(PORT, '127.0.0.1', () => {
   console.error(`[context-pad-mcp] Serving Context Pad on http://localhost:${PORT}`);
-  openBrowser(`http://localhost:${PORT}`);
+  if (!process.env.CONTEXT_PAD_NO_OPEN) {
+    openBrowser(`http://localhost:${PORT}`);
+  }
+  resolveIsPrimary(true);
 });
+
+async function proxyGetNotes() {
+  const res = await fetch(`http://127.0.0.1:${PORT}/internal/notes`);
+  if (!res.ok) throw new Error(`primary responded ${res.status}`);
+  return res.json();
+}
+
+async function proxyShowDoc(content, title) {
+  const res = await fetch(`http://127.0.0.1:${PORT}/internal/show_doc`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content, title })
+  });
+  if (!res.ok) throw new Error(`primary responded ${res.status}`);
+  return res.json();
+}
 
 // ── MCP tools ────────────────────────────────────────────────────────────────
 const mcp = new McpServer({ name: 'context-pad', version: '0.1.0' });
@@ -173,10 +267,23 @@ mcp.registerTool(
     inputSchema: {}
   },
   async () => {
-    if (!currentNotes.trim()) {
+    const isPrimary = await isPrimaryPromise;
+
+    let content;
+    if (isPrimary) {
+      content = currentNotes;
+    } else {
+      try {
+        content = (await proxyGetNotes()).content;
+      } catch (err) {
+        return { content: [{ type: 'text', text: `Could not reach the running context-pad server on port ${PORT}: ${err.message}` }] };
+      }
+    }
+
+    if (!content || !content.trim()) {
       return { content: [{ type: 'text', text: '(Context Pad notes are empty.)' }] };
     }
-    return { content: [{ type: 'text', text: currentNotes }] };
+    return { content: [{ type: 'text', text: content }] };
   }
 );
 
@@ -196,27 +303,19 @@ mcp.registerTool(
     }
   },
   async ({ content, title }) => {
-    const sent = broadcast({ type: 'show_doc', content, title: title || 'From agent' });
-    const lines = [];
+    const isPrimary = await isPrimaryPromise;
 
-    if (sent === 0) {
-      lines.push(`No Context Pad tab is currently connected at http://localhost:${PORT}. Ask the user to open it, then try again.`);
-    } else {
-      lines.push(`Pushed to ${sent} connected Context Pad tab(s).`);
+    if (isPrimary) {
+      const result = await handleShowDoc(content, title);
+      return { content: [{ type: 'text', text: result.text }] };
     }
 
-    if (config.saveDocs) {
-      try {
-        fs.mkdirSync(config.saveDir, { recursive: true });
-        const filePath = path.join(config.saveDir, timestampedFilename(title));
-        fs.writeFileSync(filePath, content);
-        lines.push(`Saved to ${filePath}.`);
-      } catch (err) {
-        lines.push(`Could not save to disk (${config.saveDir}): ${err.message}`);
-      }
+    try {
+      const result = await proxyShowDoc(content, title);
+      return { content: [{ type: 'text', text: result.text || 'Unknown response from the running context-pad server.' }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Could not reach the running context-pad server on port ${PORT}: ${err.message}` }] };
     }
-
-    return { content: [{ type: 'text', text: lines.join(' ') }] };
   }
 );
 
