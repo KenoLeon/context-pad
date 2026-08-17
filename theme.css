@@ -592,11 +592,12 @@ label:focus-visible {
 
 /* ── Font Body ───────────────────────────────────── */
 
-body[data-font="sans"]       { --font-body: "Public Sans", system-ui, sans-serif; }
-body[data-font="serif"]      { --font-body: "Lora", Georgia, serif; }
-body[data-font="mono"]       { --font-body: "JetBrains Mono", monospace; }
-body[data-font="typewriter"] { --font-body: "Special Elite", "Courier New", monospace; }
-body[data-font="script"]     { --font-body: "Caveat", cursive; }
+body[data-font="fira-sans"]    { --font-body: "Fira Sans", system-ui, sans-serif; }
+body[data-font="source-serif"] { --font-body: "Source Serif 4", Georgia, serif; }
+body[data-font="alegreya"]     { --font-body: "Alegreya", Georgia, serif; }
+body[data-font="newsreader"]   { --font-body: "Newsreader", Georgia, serif; }
+body[data-font="montserrat"]   { --font-body: "Montserrat", system-ui, sans-serif; }
+body[data-font="plex-mono"]    { --font-body: "IBM Plex Mono", monospace; }
 
 .textpad,
 .content {

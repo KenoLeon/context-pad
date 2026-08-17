@@ -67,7 +67,7 @@ Choice persists across sessions.
 
 ### Settings (⚙)
 - **Content width** — slider from 400 to 1400 px controls how much whitespace appears on the sides
-- **Font** — choose from System sans, Lora serif, JetBrains Mono, Special Elite (typewriter), or Caveat (script)
+- **Font** — choose from Fira Sans (default), Source Serif 4, Alegreya, Newsreader, Montserrat, or IBM Plex Mono
 - **Spell check** — toggle browser spell-check on the notes textarea
 - **Table of Contents** — show/hide the TOC sidebar in the MD reader
 

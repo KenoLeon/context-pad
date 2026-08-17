@@ -17,8 +17,8 @@
   const DEFAULT_WIDTH_PX = 1100;
   const WIDTH_MIN = 400;
   const WIDTH_MAX = 1400;
-  const DEFAULT_FONT  = 'sans';
-  const VALID_FONTS   = ['sans', 'serif', 'mono', 'typewriter', 'script'];
+  const DEFAULT_FONT  = 'fira-sans';
+  const VALID_FONTS   = ['fira-sans', 'source-serif', 'alegreya', 'newsreader', 'montserrat', 'plex-mono'];
   const FONTSIZE_KEY     = 'contextPadFontSize';
   const DEFAULT_FONTSIZE = 16;
   const FONTSIZE_MIN     = 13;
