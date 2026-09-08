@@ -58,6 +58,14 @@
             <span>Show Table of Contents</span>
           </label>
         </fieldset>
+        <fieldset class="settings-group" id="annotSettingsGroup">
+          <legend>Annotations</legend>
+          <div id="annotList" class="annot-settings-list"></div>
+          <div class="annot-add-row">
+            <input type="text" id="annotAddInput" class="annot-add-input" placeholder="NEW TAG" maxlength="20">
+            <button type="button" id="annotAddBtn" class="btn">Add</button>
+          </div>
+        </fieldset>
         <fieldset class="settings-group" id="agentDocsGroup">
           <legend>Agent docs</legend>
           <p class="settings-hint" id="agentDocsHint">Only available when Context Pad is running via mcp-server — not connected right now.</p>
@@ -84,6 +92,9 @@
           spellcheck="true" autocorrect="on" autocapitalize="sentences"></textarea>
         <div class="toolbar">
           <button id="copyAll" class="btn primary" type="button">Copy all</button>
+          <button id="saveNotes" class="btn" type="button">Save</button>
+          <button id="annotBtn" class="btn" type="button">Annotate</button>
+          <button id="mdBtn" class="btn" type="button">Markdown</button>
           <button id="clearAll" class="btn" type="button">Clear</button>
           <span id="notesStatus" class="badge" aria-live="polite">Ready.</span>
           <span id="tokenCount" class="badge token-badge" aria-live="polite" style="display:none"></span>
@@ -102,22 +113,38 @@
       <div class="reader-bar">
         <label for="mdFileInput" class="btn primary">Open .md file</label>
         <input type="file" id="mdFileInput" accept=".md,.txt" class="sr-only" />
+        <button id="readerEditBtn" class="btn" type="button" hidden>Edit</button>
+        <button id="readerAnnotBtn" class="btn" type="button" hidden>Annotate</button>
+        <button id="readerMdBtn" class="btn" type="button" hidden>Markdown</button>
+        <button id="readerSaveBtn" class="btn" type="button" hidden>Save</button>
         <span id="readerTokenCount" class="badge" aria-live="polite" style="display:none"></span>
         <a href="#" id="loadReadme" class="readme-link">README.md</a>
       </div>
       <section class="layout-with-sidebar" id="readerLayout" hidden>
         <article class="content-wrap">
+          <textarea id="mdEditor" class="textpad md-editor" hidden></textarea>
           <section class="content" id="mdContent"></section>
         </article>
         <aside class="sidebar" aria-label="Section navigation">
           <h2>Jump to section</h2>
           <ul class="toc" id="toc"></ul>
+          <div id="tagsSidebar" hidden>
+            <hr class="sidebar-divider">
+            <h2>Annotations</h2>
+            <div id="tagsContent" class="tags-list"></div>
+          </div>
         </aside>
       </section>
       <p class="footer-note">File is read locally. Nothing is uploaded.</p>
     </div>
 
   </main>
+  <div id="annotPicker" class="annot-picker" hidden>
+    <div id="annotPickerList"></div>
+  </div>
+  <div id="mdPicker" class="annot-picker md-picker" hidden>
+    <div id="mdPickerList"></div>
+  </div>
   <script src="./app.js"></script>
 </body>
 </html>

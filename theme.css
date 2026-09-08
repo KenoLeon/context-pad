@@ -18,12 +18,12 @@
   --bg: #03070d;
   --bg-elev: #00142a;
   --surface: #2e4559;
-  --ink: #e4edf3;
-  --muted: #a3b4bf;
+  --ink: #7daabb;
+  --muted: #4f7080;
   --line: #51768c;
   --accent: #7e9caf;
-  --accent-strong: #a3b4bf;
-  --focus: #a3b4bf;
+  --accent-strong: #8faabb;
+  --focus: #7daabb;
   --border-dim: #152738;
 }
 
@@ -44,12 +44,12 @@
   --bg: #17191b;
   --bg-elev: #131517;
   --surface: #1f2226;
-  --ink: #f6f7f8;
-  --muted: #d0d4d9;
+  --ink: #8a929a;
+  --muted: #5c6470;
   --line: #4e545d;
-  --accent: #bcc2cc;
-  --accent-strong: #eceff4;
-  --focus: #d2d8e2;
+  --accent: #8a929a;
+  --accent-strong: #9aa2ab;
+  --focus: #8a929a;
   --border-dim: #282d33;
 }
 
@@ -868,4 +868,247 @@ pre code {
   border: none;
   padding: 0;
   font-size: inherit;
+}
+
+/* ── MD Editor (edit mode textarea) ──────────────────────── */
+
+.md-editor {
+  width: 100%;
+  min-height: 65vh;
+  resize: vertical;
+}
+
+/* ── Annotation Tags ──────────────────────────────────────── */
+
+.annot-tag {
+  border-radius: 3px;
+  padding: 0.05em 0.3em;
+  font-size: 0.85em;
+  font-style: normal;
+  font-weight: 500;
+  font-family: var(--font-sans);
+}
+
+/* Light / Paper (default :root) */
+.annot-tag--edit        { background: #d4f0e2; color: #1a5c35; }
+.annot-tag--wrong       { background: #fad5d5; color: #7a1111; }
+.annot-tag--incomplete  { background: #fdefd4; color: #7a4500; }
+.annot-tag--superficial { background: #fdfbd2; color: #5a4900; }
+.annot-tag--overstated  { background: #ece0f8; color: #4a1870; }
+.annot-tag--stale       { background: #dce8f5; color: #1c3958; }
+.annot-tag--move        { background: #d8f5f2; color: #0d4a43; }
+.annot-tag--cut         { background: #fddede; color: #7a0000; }
+
+/* Semi-dark */
+[data-theme="semi-dark"] .annot-tag--edit        { background: rgba(52,168,83,.18);  color: #80c98e; }
+[data-theme="semi-dark"] .annot-tag--wrong       { background: rgba(220,53,69,.18);  color: #e88a92; }
+[data-theme="semi-dark"] .annot-tag--incomplete  { background: rgba(255,160,0,.18);  color: #e8b86a; }
+[data-theme="semi-dark"] .annot-tag--superficial { background: rgba(210,190,0,.18);  color: #d4c660; }
+[data-theme="semi-dark"] .annot-tag--overstated  { background: rgba(150,80,220,.18); color: #c09ae0; }
+[data-theme="semi-dark"] .annot-tag--stale       { background: rgba(60,130,200,.18); color: #7db0d8; }
+[data-theme="semi-dark"] .annot-tag--move        { background: rgba(0,180,160,.18);  color: #70d4ca; }
+[data-theme="semi-dark"] .annot-tag--cut         { background: rgba(180,0,0,.18);    color: #e06060; }
+
+/* Dark */
+[data-theme="dark"] .annot-tag--edit        { background: rgba(52,168,83,.18);  color: #80c98e; }
+[data-theme="dark"] .annot-tag--wrong       { background: rgba(220,53,69,.18);  color: #e88a92; }
+[data-theme="dark"] .annot-tag--incomplete  { background: rgba(255,160,0,.18);  color: #e8b86a; }
+[data-theme="dark"] .annot-tag--superficial { background: rgba(210,190,0,.18);  color: #d4c660; }
+[data-theme="dark"] .annot-tag--overstated  { background: rgba(150,80,220,.18); color: #c09ae0; }
+[data-theme="dark"] .annot-tag--stale       { background: rgba(60,130,200,.18); color: #7db0d8; }
+[data-theme="dark"] .annot-tag--move        { background: rgba(0,180,160,.18);  color: #70d4ca; }
+[data-theme="dark"] .annot-tag--cut         { background: rgba(180,0,0,.18);    color: #e06060; }
+
+/* ── Tags Sidebar ─────────────────────────────────────────── */
+
+.sidebar-divider {
+  border: 0;
+  border-top: 1px solid var(--border-dim);
+  margin: 0.8rem 0 0.6rem;
+}
+
+#tagsSidebar h2 {
+  margin: 0 0 0.3rem;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+}
+
+.tags-group-label {
+  margin: 0.65rem 0 0.2rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.tags-group-label:first-child { margin-top: 0.1rem; }
+
+.tags-entry {
+  display: block;
+  text-decoration: none;
+  font-size: 0.74rem;
+  margin-bottom: 0.22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+  border-radius: 3px;
+  padding: 0.15em 0.35em;
+}
+
+.tags-entry:hover { opacity: 0.75; }
+
+/* ── Button Shortcut Hint ─────────────────────────────────── */
+
+.btn-shortcut {
+  font-size: 0.72em;
+  opacity: 0.6;
+  margin-left: 0.3em;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* ── Annotation Picker ────────────────────────────────────── */
+
+.annot-picker {
+  position: fixed;
+  z-index: 200;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.4rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.35);
+  min-width: 160px;
+}
+
+.annot-picker-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0.35em 0.6em;
+  margin-bottom: 0.18rem;
+}
+
+.annot-picker-btn:last-child { margin-bottom: 0; }
+.annot-picker-btn:hover { opacity: 0.8; }
+
+.annot-picker-btn:focus,
+.annot-picker-btn:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+/* ── Markdown Picker ──────────────────────────────────────── */
+
+.md-picker {
+  min-width: 230px;
+}
+
+.md-picker-group {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0.5rem 0 0.15rem;
+  padding: 0 0.3rem;
+}
+
+.md-picker-group:first-child { margin-top: 0.1rem; }
+
+.md-picker-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0.32em 0.5em;
+  margin-bottom: 0.1rem;
+  font-size: 0.84em;
+  font-family: var(--font-sans);
+  transition: background 60ms ease;
+}
+
+.md-picker-btn:hover,
+.md-picker-btn:focus,
+.md-picker-btn:focus-visible {
+  background: var(--surface);
+  outline: none;
+}
+
+.md-picker-label {
+  flex: 1;
+}
+
+.md-picker-hint {
+  font-size: 0.78em;
+  color: var(--muted);
+  font-family: monospace;
+  margin-left: 1em;
+  flex-shrink: 0;
+}
+
+/* ── Annotation Settings ──────────────────────────────────── */
+
+.annot-settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.55rem;
+  margin-top: 0.35rem;
+}
+
+.annot-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.annot-settings-row .annot-tag {
+  flex: 1;
+  font-size: 0.82rem;
+}
+
+.annot-delete-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  border-radius: 3px;
+  padding: 0 0.42rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  transition: color 80ms ease, border-color 80ms ease;
+  flex-shrink: 0;
+}
+
+.annot-delete-btn:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.annot-add-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.annot-add-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-transform: uppercase;
 }

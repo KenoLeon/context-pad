@@ -23,6 +23,21 @@
   const DEFAULT_FONTSIZE = 16;
   const FONTSIZE_MIN     = 13;
   const FONTSIZE_MAX     = 22;
+  const ANNOT_KEY      = 'contextPadAnnotations';
+  const DEFAULT_ANNOTS = ['EDIT','WRONG','INCOMPLETE','SUPERFICIAL','OVERSTATED','STALE','MOVE','CUT'];
+  var userAnnotations = (function () {
+    try {
+      var s = JSON.parse(localStorage.getItem(ANNOT_KEY));
+      if (Array.isArray(s) && s.length) return s;
+    } catch (e) {}
+    return DEFAULT_ANNOTS.slice();
+  }());
+  var VALID_TAGS = {};
+  function rebuildValidTags() {
+    VALID_TAGS = {};
+    userAnnotations.forEach(function (t) { VALID_TAGS[t] = 1; });
+  }
+  rebuildValidTags();
 
   // ── Build Topbar ───────────────────────────────────────────────────────────
   const tabButtonsHtml = TABS.map(t =>
@@ -172,6 +187,309 @@
   closeSettingsBtn.addEventListener('click', function () { modal.close(); });
   modal.addEventListener('click', function (e) { if (e.target === modal) { modal.close(); } });
 
+  // ── Annotations ────────────────────────────────────────────────────────────
+  var annotBtn        = document.getElementById('annotBtn');
+  var annotPicker     = document.getElementById('annotPicker');
+  var annotPickerList = document.getElementById('annotPickerList');
+  var currentAnnotTarget = null;
+  var kbdLabel  = 'Ctrl+⇧A';
+  var kbdTitle  = 'Ctrl+Shift+A';
+  annotBtn.innerHTML = 'Annotate <span class="btn-shortcut">' + kbdLabel + '</span>';
+  annotBtn.title = kbdTitle;
+
+  function saveAnnotations() {
+    localStorage.setItem(ANNOT_KEY, JSON.stringify(userAnnotations));
+    rebuildValidTags();
+  }
+
+  function renderAnnotSettings() {
+    var list = document.getElementById('annotList');
+    if (!list) return;
+    list.innerHTML = '';
+    userAnnotations.forEach(function (type, i) {
+      var row   = document.createElement('div');
+      row.className = 'annot-settings-row';
+      var badge = document.createElement('span');
+      badge.className = 'annot-tag annot-tag--' + type.toLowerCase();
+      badge.textContent = type;
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'annot-delete-btn';
+      del.textContent = '×';
+      del.setAttribute('aria-label', 'Remove ' + type);
+      (function (idx) {
+        del.addEventListener('click', function () {
+          userAnnotations.splice(idx, 1);
+          saveAnnotations();
+          renderAnnotSettings();
+        });
+      }(i));
+      row.appendChild(badge);
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById('annotAddBtn').addEventListener('click', function () {
+    var input = document.getElementById('annotAddInput');
+    var val = input.value.trim().toUpperCase().replace(/[^A-Z]/g, '');
+    if (!val || userAnnotations.indexOf(val) !== -1) { input.value = ''; return; }
+    userAnnotations.push(val);
+    saveAnnotations();
+    renderAnnotSettings();
+    input.value = '';
+  });
+
+  document.getElementById('annotAddInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { document.getElementById('annotAddBtn').click(); }
+  });
+
+  function insertAnnotation(type, targetArea) {
+    var tag   = '[' + type + ': ]';
+    var start = targetArea.selectionStart;
+    var end   = targetArea.selectionEnd;
+    var val   = targetArea.value;
+    targetArea.value = val.slice(0, start) + tag + val.slice(end);
+    var pos = start + tag.length - 1;
+    targetArea.setSelectionRange(pos, pos);
+    targetArea.focus();
+    targetArea.dispatchEvent(new Event('input'));
+  }
+
+  function buildAnnotPickerList(targetArea) {
+    annotPickerList.innerHTML = '';
+    userAnnotations.forEach(function (type) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'annot-picker-btn annot-tag annot-tag--' + type.toLowerCase();
+      btn.textContent = type;
+      btn.addEventListener('click', function () {
+        insertAnnotation(type, targetArea);
+        closeAnnotPicker();
+      });
+      annotPickerList.appendChild(btn);
+    });
+  }
+
+  function openAnnotPicker(anchorEl, targetArea) {
+    currentAnnotTarget = targetArea;
+    buildAnnotPickerList(targetArea);
+    annotPicker.removeAttribute('hidden');
+    var rect    = anchorEl.getBoundingClientRect();
+    var pickerH = annotPicker.offsetHeight;
+    var top = (window.innerHeight - rect.bottom > pickerH + 8)
+              ? rect.bottom + 4 : rect.top - pickerH - 4;
+    annotPicker.style.left = Math.max(4, rect.left) + 'px';
+    annotPicker.style.top  = top + 'px';
+    var firstBtn = annotPickerList.querySelector('.annot-picker-btn');
+    if (firstBtn) firstBtn.focus();
+  }
+
+  function closeAnnotPicker() {
+    annotPicker.setAttribute('hidden', '');
+    if (currentAnnotTarget) { currentAnnotTarget.focus(); }
+    currentAnnotTarget = null;
+  }
+
+  annotPicker.addEventListener('keydown', function (e) {
+    var btns = Array.from(annotPickerList.querySelectorAll('.annot-picker-btn'));
+    var idx  = btns.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      (btns[idx + 1] || btns[0]).focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      (btns[idx - 1] || btns[btns.length - 1]).focus();
+    }
+  });
+
+  annotBtn.addEventListener('click', function () {
+    if (!annotPicker.hidden) { closeAnnotPicker(); return; }
+    openAnnotPicker(annotBtn, notesArea);
+  });
+
+  document.addEventListener('click', function (e) {
+    var mdPickerEl    = document.getElementById('mdPicker');
+    var mdBtnEl       = document.getElementById('mdBtn');
+    var readerAnnotEl = document.getElementById('readerAnnotBtn');
+    var readerMdEl    = document.getElementById('readerMdBtn');
+    if (!annotPicker.hidden && !annotPicker.contains(e.target) &&
+        e.target !== annotBtn && e.target !== readerAnnotEl) {
+      closeAnnotPicker();
+    }
+    if (mdPickerEl && !mdPickerEl.hidden && !mdPickerEl.contains(e.target) &&
+        e.target !== mdBtnEl && e.target !== readerMdEl) {
+      closeMdPicker();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var active       = document.activeElement;
+    var readerAnnotEl = document.getElementById('readerAnnotBtn');
+    var readerMdEl    = document.getElementById('readerMdBtn');
+    var mdBtnEl       = document.getElementById('mdBtn');
+    var mdPickerEl    = document.getElementById('mdPicker');
+
+    if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+      e.preventDefault();
+      if (active === notesArea) {
+        if (!annotPicker.hidden) { closeAnnotPicker(); return; }
+        openAnnotPicker(annotBtn, notesArea);
+      } else if (active === mdEditor) {
+        if (!annotPicker.hidden) { closeAnnotPicker(); return; }
+        openAnnotPicker(readerAnnotEl, mdEditor);
+      }
+    }
+    if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      e.preventDefault();
+      if (active === notesArea) {
+        if (mdPickerEl && !mdPickerEl.hidden) { closeMdPicker(); return; }
+        openMdPicker(mdBtnEl, notesArea);
+      } else if (active === mdEditor) {
+        if (mdPickerEl && !mdPickerEl.hidden) { closeMdPicker(); return; }
+        openMdPicker(readerMdEl, mdEditor);
+      }
+    }
+    if (e.key === 'Escape') {
+      if (!annotPicker.hidden) closeAnnotPicker();
+      if (mdPickerEl && !mdPickerEl.hidden) closeMdPicker();
+    }
+  });
+
+  openSettingsBtn.addEventListener('click', renderAnnotSettings);
+
+  // ── Markdown Inserter ──────────────────────────────────────────────────────
+  var mdBtn        = document.getElementById('mdBtn');
+  var mdPicker     = document.getElementById('mdPicker');
+  var mdPickerList = document.getElementById('mdPickerList');
+  mdBtn.innerHTML = 'Markdown <span class="btn-shortcut">Ctrl+⇧D</span>';
+  mdBtn.title = 'Ctrl+Shift+D';
+
+  var MD_ITEMS = [
+    { group:'Inline', label:'Bold',          hint:'**...**',       wrap:['**','**'], ph:'bold text' },
+    { group:'Inline', label:'Italic',         hint:'*...*',         wrap:['*','*'],   ph:'italic text' },
+    { group:'Inline', label:'Inline code',    hint:'`...`',         wrap:['`','`'],   ph:'code' },
+    { group:'Inline', label:'Strikethrough',  hint:'~~...~~',       wrap:['~~','~~'], ph:'text' },
+    { group:'Inline', label:'Link',           hint:'[text](url)',   type:'link' },
+    { group:'Inline', label:'Image',          hint:'![alt](url)',   type:'image' },
+    { group:'Block',  label:'Heading 1',      hint:'# ',           prefix:'# ' },
+    { group:'Block',  label:'Heading 2',      hint:'## ',          prefix:'## ' },
+    { group:'Block',  label:'Heading 3',      hint:'### ',         prefix:'### ' },
+    { group:'Block',  label:'Bullet list',    hint:'- ',           prefix:'- ' },
+    { group:'Block',  label:'Numbered list',  hint:'1. ',          prefix:'1. ' },
+    { group:'Block',  label:'Blockquote',     hint:'> ',           prefix:'> ' },
+    { group:'Block',  label:'Code block',     hint:'``` ```',      type:'codeblock' },
+    { group:'Block',  label:'Divider',        hint:'---',          type:'divider' }
+  ];
+
+  function insertMarkdown(item, targetArea) {
+    var start    = targetArea.selectionStart;
+    var end      = targetArea.selectionEnd;
+    var val      = targetArea.value;
+    var selected = val.slice(start, end);
+
+    if (item.wrap) {
+      var inner = selected || item.ph;
+      targetArea.value = val.slice(0, start) + item.wrap[0] + inner + item.wrap[1] + val.slice(end);
+      targetArea.setSelectionRange(start + item.wrap[0].length, start + item.wrap[0].length + inner.length);
+
+    } else if (item.prefix) {
+      var lineStart = val.lastIndexOf('\n', start - 1) + 1;
+      targetArea.value = val.slice(0, lineStart) + item.prefix + val.slice(lineStart);
+      targetArea.setSelectionRange(start + item.prefix.length, start + item.prefix.length);
+
+    } else if (item.type === 'link') {
+      var lText = selected || 'link text';
+      var lMd   = '[' + lText + '](url)';
+      targetArea.value = val.slice(0, start) + lMd + val.slice(end);
+      var urlS = start + lText.length + 3;
+      targetArea.setSelectionRange(urlS, urlS + 3);
+
+    } else if (item.type === 'image') {
+      var aText = selected || 'alt text';
+      var iMd   = '![' + aText + '](url)';
+      targetArea.value = val.slice(0, start) + iMd + val.slice(end);
+      var iUrlS = start + aText.length + 4;
+      targetArea.setSelectionRange(iUrlS, iUrlS + 3);
+
+    } else if (item.type === 'codeblock') {
+      var cbInner = selected || '';
+      var cbText  = '```\n' + cbInner + '\n```';
+      targetArea.value = val.slice(0, start) + cbText + val.slice(end);
+      targetArea.setSelectionRange(start + 4, start + 4 + cbInner.length);
+
+    } else if (item.type === 'divider') {
+      var divText = '\n\n---\n\n';
+      targetArea.value = val.slice(0, start) + divText + val.slice(end);
+      targetArea.setSelectionRange(start + divText.length, start + divText.length);
+    }
+
+    targetArea.focus();
+    targetArea.dispatchEvent(new Event('input'));
+  }
+
+  function buildMdPickerList(targetArea) {
+    mdPickerList.innerHTML = '';
+    var currentGroup = null;
+    MD_ITEMS.forEach(function (item) {
+      if (item.group !== currentGroup) {
+        currentGroup = item.group;
+        var g = document.createElement('p');
+        g.className = 'md-picker-group';
+        g.textContent = item.group;
+        mdPickerList.appendChild(g);
+      }
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'md-picker-btn';
+      btn.innerHTML = '<span class="md-picker-label">' + item.label + '</span>' +
+                      '<span class="md-picker-hint">' + item.hint + '</span>';
+      btn.addEventListener('click', function () {
+        insertMarkdown(item, targetArea);
+        closeMdPicker();
+      });
+      mdPickerList.appendChild(btn);
+    });
+  }
+
+  function openMdPicker(anchorEl, targetArea) {
+    closeAnnotPicker();
+    currentAnnotTarget = targetArea;
+    buildMdPickerList(targetArea);
+    mdPicker.removeAttribute('hidden');
+    var rect    = anchorEl.getBoundingClientRect();
+    var pickerH = mdPicker.offsetHeight;
+    var top = (window.innerHeight - rect.bottom > pickerH + 8)
+              ? rect.bottom + 4 : rect.top - pickerH - 4;
+    mdPicker.style.left = Math.max(4, rect.left) + 'px';
+    mdPicker.style.top  = top + 'px';
+    var firstBtn = mdPickerList.querySelector('.md-picker-btn');
+    if (firstBtn) firstBtn.focus();
+  }
+
+  function closeMdPicker() {
+    mdPicker.setAttribute('hidden', '');
+    if (currentAnnotTarget) { currentAnnotTarget.focus(); }
+    currentAnnotTarget = null;
+  }
+
+  mdPicker.addEventListener('keydown', function (e) {
+    var btns = Array.from(mdPickerList.querySelectorAll('.md-picker-btn'));
+    var idx  = btns.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      (btns[idx + 1] || btns[0]).focus();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      (btns[idx - 1] || btns[btns.length - 1]).focus();
+    }
+  });
+
+  mdBtn.addEventListener('click', function () {
+    if (!mdPicker.hidden) { closeMdPicker(); return; }
+    openMdPicker(mdBtn, notesArea);
+  });
+
   // ── Spell Check ────────────────────────────────────────────────────────────
   var notesArea        = document.getElementById('quickNotes');
   var spellcheckToggle = document.getElementById('spellcheckToggle');
@@ -232,8 +550,35 @@
     }
   }
 
+  // ── Save Helper ────────────────────────────────────────────────────────────
+  function saveTextFile(text, suggestedName, onDone) {
+    if (window.showSaveFilePicker) {
+      window.showSaveFilePicker({
+        suggestedName: suggestedName,
+        types: [{ description: 'Markdown / text', accept: { 'text/plain': ['.md', '.txt'] } }]
+      }).then(function (fh) {
+        return fh.createWritable().then(function (w) {
+          return w.write(text).then(function () { return w.close(); });
+        });
+      }).then(function () {
+        if (onDone) onDone('saved');
+      }).catch(function (err) {
+        if (err.name !== 'AbortError' && onDone) onDone('error');
+      });
+    } else {
+      var blob = new Blob([text], { type: 'text/plain' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href = url; a.download = suggestedName;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      if (onDone) onDone('downloaded');
+    }
+  }
+
   // ── Notes ──────────────────────────────────────────────────────────────────
   var copyBtn     = document.getElementById('copyAll');
+  var saveBtn     = document.getElementById('saveNotes');
   var clearBtn    = document.getElementById('clearAll');
   var notesStatus = document.getElementById('notesStatus');
 
@@ -260,6 +605,14 @@
       notesStatus.textContent = 'Copied to clipboard.';
     }, function () {
       notesStatus.textContent = 'Copy failed — try Ctrl+C.';
+    });
+  });
+
+  saveBtn.addEventListener('click', function () {
+    var text = notesArea.value;
+    if (!text.trim()) { notesStatus.textContent = 'Nothing to save yet.'; return; }
+    saveTextFile(text, 'notes.md', function (result) {
+      notesStatus.textContent = result === 'saved' ? 'Saved.' : result === 'downloaded' ? 'Downloaded.' : 'Save failed.';
     });
   });
 
@@ -290,7 +643,12 @@
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g,  '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g,     '<em>$1</em>')
-      .replace(/`([^`]+)`/g,     '<code>$1</code>');
+      .replace(/`([^`]+)`/g,     '<code>$1</code>')
+      .replace(/\[([A-Z]+):\s*([^\]]*)\]/g, function (match, type, content) {
+        if (!VALID_TAGS[type]) return match;
+        return '<mark class="annot-tag annot-tag--' + type.toLowerCase() +
+               '" data-tag-type="' + type + '">[' + type + ': ' + content + ']</mark>';
+      });
   }
 
   function renderMarkdown(markdown) {
@@ -398,27 +756,128 @@
     return headings.length;
   }
 
+  function buildTagsSidebar(contentEl, tagsSidebarEl, tagsContentEl) {
+    var allTags = Array.from(contentEl.querySelectorAll('.annot-tag'));
+    allTags.forEach(function (el, i) { el.id = 'annot-' + i; });
+    tagsContentEl.innerHTML = '';
+
+    if (!allTags.length) { tagsSidebarEl.hidden = true; return; }
+
+    var order = [];
+    var groups = {};
+    allTags.forEach(function (el) {
+      var type = el.dataset.tagType;
+      if (!groups[type]) { groups[type] = []; order.push(type); }
+      groups[type].push(el);
+    });
+
+    order.forEach(function (type) {
+      var label = document.createElement('p');
+      label.className = 'tags-group-label';
+      label.textContent = type + ' · ' + groups[type].length;
+      tagsContentEl.appendChild(label);
+
+      groups[type].forEach(function (el) {
+        var a = document.createElement('a');
+        a.href = '#' + el.id;
+        a.className = 'tags-entry annot-tag annot-tag--' + type.toLowerCase();
+        var preview = el.textContent;
+        a.textContent = preview.length > 44 ? preview.slice(0, 41) + '…' : preview;
+        tagsContentEl.appendChild(a);
+      });
+    });
+
+    tagsSidebarEl.hidden = false;
+  }
+
   // ── MD Reader ──────────────────────────────────────────────────────────────
   var fileInput        = document.getElementById('mdFileInput');
   var readerLayout     = document.getElementById('readerLayout');
   var mdContent        = document.getElementById('mdContent');
+  var mdEditor         = document.getElementById('mdEditor');
   var tocEl            = document.getElementById('toc');
+  var tagsSidebarEl    = document.getElementById('tagsSidebar');
+  var tagsContentEl    = document.getElementById('tagsContent');
   var docTitle         = document.getElementById('docTitle');
   var docPath          = document.getElementById('docPath');
   var readerTokenCount = document.getElementById('readerTokenCount');
+  var readerEditBtn    = document.getElementById('readerEditBtn');
+  var readerAnnotBtn   = document.getElementById('readerAnnotBtn');
+  readerAnnotBtn.innerHTML = 'Annotate <span class="btn-shortcut">' + kbdLabel + '</span>';
+  readerAnnotBtn.title = kbdTitle;
+  var readerMdBtn      = document.getElementById('readerMdBtn');
+  readerMdBtn.innerHTML = 'Markdown <span class="btn-shortcut">Ctrl+⇧D</span>';
+  readerMdBtn.title = 'Ctrl+Shift+D';
+  var readerSaveBtn    = document.getElementById('readerSaveBtn');
 
-  function displayMd(text, filename) {
-    docTitle.textContent = filename;
-    docPath.textContent  = filename;
-    mdContent.innerHTML  = renderMarkdown(text);
+  var currentMdSource   = '';
+  var currentMdFilename = 'document.md';
+  var readerEditMode    = false;
+
+  function exitEditMode() {
+    mdEditor.setAttribute('hidden', '');
+    mdContent.removeAttribute('hidden');
+    readerEditBtn.textContent = 'Edit';
+    readerAnnotBtn.setAttribute('hidden', '');
+    readerMdBtn.setAttribute('hidden', '');
+    readerEditMode = false;
+  }
+
+  function renderView(source) {
+    mdContent.innerHTML = renderMarkdown(source);
     buildToc(mdContent, tocEl);
-    readerLayout.removeAttribute('hidden');
-
-    var tokenStr = estimateTokens(text);
+    buildTagsSidebar(mdContent, tagsSidebarEl, tagsContentEl);
+    var tokenStr = estimateTokens(source);
     readerTokenCount.textContent = tokenStr || '';
     readerTokenCount.style.display = tokenStr ? '' : 'none';
+  }
 
-    // Respect current TOC setting instead of resetting it
+  readerEditBtn.addEventListener('click', function () {
+    if (!readerEditMode) {
+      mdEditor.value = currentMdSource;
+      mdContent.setAttribute('hidden', '');
+      mdEditor.removeAttribute('hidden');
+      readerEditBtn.textContent = 'View';
+      readerAnnotBtn.removeAttribute('hidden');
+      readerMdBtn.removeAttribute('hidden');
+      readerEditMode = true;
+    } else {
+      currentMdSource = mdEditor.value;
+      exitEditMode();
+      renderView(currentMdSource);
+    }
+  });
+
+  readerAnnotBtn.addEventListener('click', function () {
+    if (!annotPicker.hidden) { closeAnnotPicker(); return; }
+    openAnnotPicker(readerAnnotBtn, mdEditor);
+  });
+
+  readerMdBtn.addEventListener('click', function () {
+    if (!mdPicker.hidden) { closeMdPicker(); return; }
+    openMdPicker(readerMdBtn, mdEditor);
+  });
+
+  readerSaveBtn.addEventListener('click', function () {
+    var text = readerEditMode ? mdEditor.value : currentMdSource;
+    if (!text.trim()) return;
+    var name = currentMdFilename;
+    if (!/\.(md|txt)$/i.test(name)) name += '.md';
+    saveTextFile(text, name, function (result) {
+      if (result === 'error') docPath.textContent = 'Save failed.';
+    });
+  });
+
+  function displayMd(text, filename) {
+    currentMdSource   = text;
+    currentMdFilename = filename;
+    if (readerEditMode) exitEditMode();
+    docTitle.textContent = filename;
+    docPath.textContent  = filename;
+    renderView(text);
+    readerLayout.removeAttribute('hidden');
+    readerEditBtn.removeAttribute('hidden');
+    readerSaveBtn.removeAttribute('hidden');
     readerLayout.classList.toggle('toc-collapsed', !tocShown);
   }
 
