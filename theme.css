@@ -1154,18 +1154,15 @@ pre code {
 /* Containing block for the status notice, outside the (scrollable) rows */
 .actionbar { position: relative; }
 
+/* Header width, not the reader's content-width setting; wraps rather than overlaps */
 .actionbar-inner {
-  max-width: var(--page-max-w, 1100px);
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0.5rem 1rem;
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex-wrap: nowrap;
-}
-
-@media (max-width: 1000px) {
-  .actionbar-inner { flex-wrap: wrap; }
+  flex-wrap: wrap;
 }
 
 .actionbar-inner[hidden] { display: none; }
@@ -1201,7 +1198,7 @@ pre code {
 .tb-status {
   position: absolute;
   top: calc(100% + 0.45rem);
-  right: max(1rem, calc((100% - var(--page-max-w, 1100px)) / 2 + 1rem));
+  right: max(1rem, calc((100% - 1200px) / 2 + 1rem));
   z-index: 5;
   padding: 0.3rem 0.65rem;
   border: 1px solid var(--line);
