@@ -48,10 +48,9 @@
   const bar = document.createElement('header');
   bar.className = 'topbar';
   bar.innerHTML = `
-    <div class="topbar-inner">
+    <div class="topbar-row"><div class="topbar-inner">
       <div class="brand-wrap">
         <span class="brand">Context Pad</span>
-        <span class="brand-sub">Your scratchpad.</span>
       </div>
       <nav class="topnav" role="tablist" aria-label="Primary navigation">
         ${tabButtonsHtml}
@@ -65,9 +64,77 @@
         </div>
         <button type="button" id="openSettings" class="settings-btn" aria-label="Open settings" title="Settings">&#9881;</button>
       </div>
-    </div>
+    </div></div>
   `;
   document.body.prepend(bar);
+
+  // Second header row: the per-tab action bar, so actions stay visible while scrolling
+  var actionBar = document.getElementById('actionBar');
+  bar.appendChild(actionBar);
+
+  // Sticky offsets (sidebar, jump targets) follow the real header height
+  function syncHeaderHeight() {
+    document.documentElement.style.setProperty('--header-h', bar.offsetHeight + 'px');
+  }
+  syncHeaderHeight();
+  if (window.ResizeObserver) { new ResizeObserver(syncHeaderHeight).observe(bar); }
+  window.addEventListener('resize', syncHeaderHeight);
+
+  // ── Icons (inline SVG, stroke = currentColor) ──────────────────────────────
+  var ICONS = {
+    copy:     '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/>',
+    save:     '<path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1z"/><path d="M8 4v5h7V4"/><path d="M8 20v-6h8v6"/>',
+    folder:   '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    toNotes:  '<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/><path d="M8 14h7M12 11l3 3-3 3"/>',
+    tag:      '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z"/><circle cx="8" cy="8" r="1.4"/>',
+    markdown: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 15V9l3 3 3-3v6"/><path d="M17 9v6M14.5 12.5 17 15l2.5-2.5"/>',
+    trash:    '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/>',
+    sidebar:  '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>',
+    plus:     '<path d="M12 5v14M5 12h14"/>',
+    chevron:  '<path d="M6 9l6 6 6-6"/>'
+  };
+
+  function iconSvg(name) {
+    return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" ' +
+           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[name] + '</svg>';
+  }
+
+  // Wraps the button's current contents in .btn-label and prepends its icon.
+  // Run after any innerHTML assignment to the button.
+  function applyIcon(btn) {
+    var name = btn.getAttribute('data-icon');
+    if (!name || !ICONS[name]) return;
+    var label = btn.innerHTML.trim();
+    // Labels can be hidden on narrow screens; keep an accessible name
+    if (label && !btn.getAttribute('aria-label')) btn.setAttribute('aria-label', btn.textContent.trim());
+    btn.innerHTML = iconSvg(name) + (label ? '<span class="btn-label">' + label + '</span>' : '');
+  }
+
+  // ── Toolbar status + unavailable actions ───────────────────────────────────
+  // Transient message that fades out on its own
+  function flashStatus(el, msg) {
+    el.textContent = msg;
+    el.classList.add('is-visible');
+    clearTimeout(el._fadeTimer);
+    el._fadeTimer = setTimeout(function () { el.classList.remove('is-visible'); }, 2600);
+  }
+
+  // Buttons stay visible when unavailable; clicking one explains why instead
+  function setUnavailable(btn, off, reason) {
+    if (btn.dataset.title === undefined) btn.dataset.title = btn.title || '';
+    btn.setAttribute('aria-disabled', off ? 'true' : 'false');
+    btn.dataset.reason = off ? reason : '';
+    btn.title = off ? reason : btn.dataset.title;
+  }
+
+  actionBar.addEventListener('click', function (e) {
+    var btn = e.target.closest('[aria-disabled="true"]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    var status = btn.closest('.actionbar-inner').querySelector('.tb-status');
+    if (status && btn.dataset.reason) flashStatus(status, btn.dataset.reason);
+  }, true);
 
   // ── Theme ──────────────────────────────────────────────────────────────────
   const themeButtons = Array.from(bar.querySelectorAll('[data-theme-value]'));
@@ -107,6 +174,7 @@
       } else {
         panel.setAttribute('hidden', '');
       }
+      actionBar.querySelector('[data-for="' + t.id + '"]').hidden = !active;
     });
     localStorage.setItem(TAB_KEY, id);
   }
@@ -244,16 +312,27 @@
     if (e.key === 'Enter') { document.getElementById('annotAddBtn').click(); }
   });
 
+  // Replace a range in a textarea through the browser's editing pipeline so
+  // the change lands on the native undo stack (assigning .value wipes it).
+  function replaceText(ta, start, end, text) {
+    ta.focus();
+    ta.setSelectionRange(start, end);
+    var ok = false;
+    try {
+      ok = document.execCommand(text ? 'insertText' : 'delete', false, text);
+    } catch (e) {}
+    if (!ok) {
+      ta.setRangeText(text, start, end, 'end');
+      ta.dispatchEvent(new Event('input'));
+    }
+  }
+
   function insertAnnotation(type, targetArea) {
     var tag   = '[' + type + ': ]';
     var start = targetArea.selectionStart;
-    var end   = targetArea.selectionEnd;
-    var val   = targetArea.value;
-    targetArea.value = val.slice(0, start) + tag + val.slice(end);
+    replaceText(targetArea, start, targetArea.selectionEnd, tag);
     var pos = start + tag.length - 1;
     targetArea.setSelectionRange(pos, pos);
-    targetArea.focus();
-    targetArea.dispatchEvent(new Event('input'));
   }
 
   function buildAnnotPickerList(targetArea) {
@@ -314,14 +393,19 @@
     var readerAnnotEl = document.getElementById('readerAnnotBtn');
     var readerMdEl    = document.getElementById('readerMdBtn');
     if (!annotPicker.hidden && !annotPicker.contains(e.target) &&
-        e.target !== annotBtn && e.target !== readerAnnotEl) {
+        !annotBtn.contains(e.target) && !readerAnnotEl.contains(e.target)) {
       closeAnnotPicker();
     }
     if (mdPickerEl && !mdPickerEl.hidden && !mdPickerEl.contains(e.target) &&
-        e.target !== mdBtnEl && e.target !== readerMdEl) {
+        !mdBtnEl.contains(e.target) && !readerMdEl.contains(e.target)) {
       closeMdPicker();
     }
   });
+
+  // Reader textareas: the Source editor or an open block editor
+  function isReaderEditor(el) {
+    return !!el && (el === mdEditor || (el.classList && el.classList.contains('md-block-editor')));
+  }
 
   document.addEventListener('keydown', function (e) {
     var active       = document.activeElement;
@@ -335,9 +419,9 @@
       if (active === notesArea) {
         if (!annotPicker.hidden) { closeAnnotPicker(); return; }
         openAnnotPicker(annotBtn, notesArea);
-      } else if (active === mdEditor) {
+      } else if (isReaderEditor(active)) {
         if (!annotPicker.hidden) { closeAnnotPicker(); return; }
-        openAnnotPicker(readerAnnotEl, mdEditor);
+        openAnnotPicker(readerAnnotEl, active);
       }
     }
     if (e.ctrlKey && e.shiftKey && e.key === 'D') {
@@ -345,9 +429,9 @@
       if (active === notesArea) {
         if (mdPickerEl && !mdPickerEl.hidden) { closeMdPicker(); return; }
         openMdPicker(mdBtnEl, notesArea);
-      } else if (active === mdEditor) {
+      } else if (isReaderEditor(active)) {
         if (mdPickerEl && !mdPickerEl.hidden) { closeMdPicker(); return; }
-        openMdPicker(readerMdEl, mdEditor);
+        openMdPicker(readerMdEl, active);
       }
     }
     if (e.key === 'Escape') {
@@ -390,42 +474,36 @@
 
     if (item.wrap) {
       var inner = selected || item.ph;
-      targetArea.value = val.slice(0, start) + item.wrap[0] + inner + item.wrap[1] + val.slice(end);
+      replaceText(targetArea, start, end, item.wrap[0] + inner + item.wrap[1]);
       targetArea.setSelectionRange(start + item.wrap[0].length, start + item.wrap[0].length + inner.length);
 
     } else if (item.prefix) {
       var lineStart = val.lastIndexOf('\n', start - 1) + 1;
-      targetArea.value = val.slice(0, lineStart) + item.prefix + val.slice(lineStart);
+      replaceText(targetArea, lineStart, lineStart, item.prefix);
       targetArea.setSelectionRange(start + item.prefix.length, start + item.prefix.length);
 
     } else if (item.type === 'link') {
       var lText = selected || 'link text';
-      var lMd   = '[' + lText + '](url)';
-      targetArea.value = val.slice(0, start) + lMd + val.slice(end);
+      replaceText(targetArea, start, end, '[' + lText + '](url)');
       var urlS = start + lText.length + 3;
       targetArea.setSelectionRange(urlS, urlS + 3);
 
     } else if (item.type === 'image') {
       var aText = selected || 'alt text';
-      var iMd   = '![' + aText + '](url)';
-      targetArea.value = val.slice(0, start) + iMd + val.slice(end);
+      replaceText(targetArea, start, end, '![' + aText + '](url)');
       var iUrlS = start + aText.length + 4;
       targetArea.setSelectionRange(iUrlS, iUrlS + 3);
 
     } else if (item.type === 'codeblock') {
       var cbInner = selected || '';
-      var cbText  = '```\n' + cbInner + '\n```';
-      targetArea.value = val.slice(0, start) + cbText + val.slice(end);
+      replaceText(targetArea, start, end, '```\n' + cbInner + '\n```');
       targetArea.setSelectionRange(start + 4, start + 4 + cbInner.length);
 
     } else if (item.type === 'divider') {
       var divText = '\n\n---\n\n';
-      targetArea.value = val.slice(0, start) + divText + val.slice(end);
+      replaceText(targetArea, start, end, divText);
       targetArea.setSelectionRange(start + divText.length, start + divText.length);
     }
-
-    targetArea.focus();
-    targetArea.dispatchEvent(new Event('input'));
   }
 
   function buildMdPickerList(targetArea) {
@@ -520,6 +598,8 @@
     tocShown = show;
     localStorage.setItem(TOC_KEY, show ? 'true' : 'false');
     tocSettingToggle.checked = show;
+    var outlineBtn = document.getElementById('outlineBtn');
+    if (outlineBtn) { outlineBtn.setAttribute('aria-pressed', show ? 'true' : 'false'); }
     var layout = document.getElementById('readerLayout');
     if (layout) { layout.classList.toggle('toc-collapsed', !show); }
   }
@@ -592,39 +672,38 @@
     updateNotesCount();
     saveTimer = setTimeout(function () {
       localStorage.setItem(NOTES_KEY, notesArea.value);
-      notesStatus.textContent = 'Saved.';
+      flashStatus(notesStatus, 'Saved locally.');
     }, 800);
   });
 
   copyBtn.addEventListener('click', function () {
     if (!notesArea.value.trim()) {
-      notesStatus.textContent = 'Nothing to copy yet.';
+      flashStatus(notesStatus, 'Nothing to copy yet.');
       return;
     }
     navigator.clipboard.writeText(notesArea.value).then(function () {
-      notesStatus.textContent = 'Copied to clipboard.';
+      flashStatus(notesStatus, 'Copied to clipboard.');
     }, function () {
-      notesStatus.textContent = 'Copy failed — try Ctrl+C.';
+      flashStatus(notesStatus, 'Copy failed — try Ctrl+C.');
     });
   });
 
   saveBtn.addEventListener('click', function () {
     var text = notesArea.value;
-    if (!text.trim()) { notesStatus.textContent = 'Nothing to save yet.'; return; }
+    if (!text.trim()) { flashStatus(notesStatus, 'Nothing to save yet.'); return; }
     saveTextFile(text, 'notes.md', function (result) {
-      notesStatus.textContent = result === 'saved' ? 'Saved.' : result === 'downloaded' ? 'Downloaded.' : 'Save failed.';
+      flashStatus(notesStatus, result === 'saved' ? 'Saved.' : result === 'downloaded' ? 'Downloaded.' : 'Save failed.');
     });
   });
 
   clearBtn.addEventListener('click', function () {
     if (!notesArea.value.trim()) {
-      notesStatus.textContent = 'Already empty.';
+      flashStatus(notesStatus, 'Already empty.');
       return;
     }
-    notesArea.value = '';
+    replaceText(notesArea, 0, notesArea.value.length, '');
     localStorage.removeItem(NOTES_KEY);
-    notesArea.focus();
-    notesStatus.textContent = 'Cleared.';
+    flashStatus(notesStatus, 'Cleared. Ctrl/⌘+Z to undo.');
     updateNotesCount();
   });
 
@@ -651,17 +730,84 @@
       });
   }
 
+  // Each top-level block carries data-src="first-last" (0-based source lines)
+  // so the rendered view can hand that exact slice to the block editor.
+  function srcAttr(a, b) { return ' data-src="' + a + '-' + b + '"'; }
+
+  // ── GFM tables ──
+  function nextNonBlank(lines, from) {
+    for (var j = from; j < lines.length; j++) { if (lines[j].trim()) return j; }
+    return -1;
+  }
+
+  function isTableSep(line) {
+    var t = line.trim();
+    return t.indexOf('|') !== -1 && /^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?$/.test(t);
+  }
+
+  function splitRow(line) {
+    var t = line.trim().replace(/\\\|/g, '\u0002');   // protect escaped pipes
+    if (t.charAt(0) === '|') t = t.slice(1);
+    if (t.slice(-1) === '|') t = t.slice(0, -1);
+    return t.split('|').map(function (c) { return c.trim().replace(/\u0002/g, '|'); });
+  }
+
+  // Lenient about blank lines between rows (common in LLM-pasted tables):
+  // a blank line followed by another |row continues the table.
+  function renderTable(lines, headIdx, sepIdx) {
+    var head   = splitRow(lines[headIdx]);
+    var aligns = splitRow(lines[sepIdx]).map(function (c) {
+      var l = c.charAt(0) === ':', r = c.slice(-1) === ':';
+      return l && r ? 'center' : r ? 'right' : l ? 'left' : '';
+    });
+    function cell(tag, text, k) {
+      var style = aligns[k] ? ' style="text-align:' + aligns[k] + '"' : '';
+      return '<' + tag + style + '>' + inlineFormat(escapeHtml(text || '')) + '</' + tag + '>';
+    }
+
+    var rows = [], last = sepIdx, j = sepIdx + 1;
+    while (j < lines.length) {
+      var t = lines[j].trim();
+      if (!t) {
+        var nb = nextNonBlank(lines, j);
+        if (nb === -1 || lines[nb].trim().charAt(0) !== '|') break;
+        j = nb;
+        continue;
+      }
+      if (t.indexOf('|') === -1) break;
+      // This row is the header of a following table
+      var after = nextNonBlank(lines, j + 1);
+      if (after !== -1 && isTableSep(lines[after])) break;
+      rows.push(splitRow(t));
+      last = j;
+      j++;
+    }
+
+    var html = '<div class="table-wrap"' + srcAttr(headIdx, last) + '><table><thead><tr>' +
+      head.map(function (c, k) { return cell('th', c, k); }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html += '<tr>' + head.map(function (_, k) { return cell('td', r[k], k); }).join('') + '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return { html: html, last: last };
+  }
+
   function renderMarkdown(markdown) {
-    var lines   = markdown.split('\n');
-    var html    = '';
-    var inUl    = false;
-    var inOl    = false;
-    var inCode  = false;
-    var codeBuf = [];
+    var lines     = markdown.split('\n');
+    var html      = '';
+    var inUl      = false;
+    var inOl      = false;
+    var inCode    = false;
+    var codeBuf   = [];
+    var codeStart = 0;
+    var listEnd   = 0;
+    var LIST_END  = '\u0001';
 
     function closeLists() {
-      if (inUl) { html += '</ul>'; inUl = false; }
-      if (inOl) { html += '</ol>'; inOl = false; }
+      if (!inUl && !inOl) return;
+      html  = html.replace(LIST_END, listEnd);
+      html += inUl ? '</ul>' : '</ol>';
+      inUl = inOl = false;
     }
 
     for (var i = 0; i < lines.length; i++) {
@@ -673,10 +819,11 @@
       if (/^```/.test(trimmed)) {
         if (!inCode) {
           closeLists();
-          inCode  = true;
-          codeBuf = [];
+          inCode    = true;
+          codeBuf   = [];
+          codeStart = i;
         } else {
-          html   += '<pre><code>' + escapeHtml(codeBuf.join('\n')) + '</code></pre>';
+          html   += '<pre' + srcAttr(codeStart, i) + '><code>' + escapeHtml(codeBuf.join('\n')) + '</code></pre>';
           inCode  = false;
           codeBuf = [];
         }
@@ -689,77 +836,108 @@
 
       if (!trimmed) { closeLists(); continue; }
 
-      if (/^---\s*$/.test(trimmed)) { closeLists(); html += '<hr />'; continue; }
+      // Table: a row with pipes whose next non-blank line is a |---| separator
+      var sepIdx = trimmed.indexOf('|') !== -1 ? nextNonBlank(lines, i + 1) : -1;
+      if (sepIdx !== -1 && isTableSep(lines[sepIdx])) {
+        closeLists();
+        var table = renderTable(lines, i, sepIdx);
+        html += table.html;
+        i = table.last;
+        continue;
+      }
 
-      if (/^#{4}\s+/.test(trimmed)) {
+      if (/^---\s*$/.test(trimmed)) { closeLists(); html += '<hr' + srcAttr(i, i) + ' />'; continue; }
+
+      var hMatch = trimmed.match(/^(#{1,4})\s+(.*)/);
+      if (hMatch) {
         closeLists();
-        html += '<h4>' + inlineFormat(escapeHtml(trimmed.replace(/^#{4}\s+/, ''))) + '</h4>';
-        continue;
-      }
-      if (/^###\s+/.test(trimmed)) {
-        closeLists();
-        html += '<h3>' + inlineFormat(escapeHtml(trimmed.replace(/^###\s+/, ''))) + '</h3>';
-        continue;
-      }
-      if (/^##\s+/.test(trimmed)) {
-        closeLists();
-        html += '<h2>' + inlineFormat(escapeHtml(trimmed.replace(/^##\s+/, ''))) + '</h2>';
-        continue;
-      }
-      if (/^#\s+/.test(trimmed)) {
-        closeLists();
-        html += '<h1>' + inlineFormat(escapeHtml(trimmed.replace(/^#\s+/, ''))) + '</h1>';
+        var tag = 'h' + hMatch[1].length;
+        html += '<' + tag + srcAttr(i, i) + '>' + inlineFormat(escapeHtml(hMatch[2])) + '</' + tag + '>';
         continue;
       }
 
       var olMatch = trimmed.match(/^(\d+)\.\s+(.+)/);
       if (olMatch) {
-        if (!inOl) { closeLists(); html += '<ol>'; inOl = true; }
+        if (!inOl) { closeLists(); html += '<ol' + srcAttr(i, LIST_END) + '>'; inOl = true; }
         html += '<li>' + inlineFormat(escapeHtml(olMatch[2])) + '</li>';
+        listEnd = i;
         continue;
       }
 
       if (/^-\s+/.test(trimmed)) {
-        if (!inUl) { closeLists(); html += '<ul>'; inUl = true; }
+        if (!inUl) { closeLists(); html += '<ul' + srcAttr(i, LIST_END) + '>'; inUl = true; }
         html += '<li>' + inlineFormat(escapeHtml(trimmed.replace(/^-\s+/, ''))) + '</li>';
+        listEnd = i;
         continue;
       }
 
       // Blockquote
       if (/^>\s+/.test(trimmed)) {
         closeLists();
-        html += '<blockquote><p>' + inlineFormat(escapeHtml(trimmed.replace(/^>\s+/, ''))) + '</p></blockquote>';
+        html += '<blockquote' + srcAttr(i, i) + '><p>' + inlineFormat(escapeHtml(trimmed.replace(/^>\s+/, ''))) + '</p></blockquote>';
         continue;
       }
 
       closeLists();
-      html += '<p>' + inlineFormat(escapeHtml(trimmed)) + '</p>';
+      html += '<p' + srcAttr(i, i) + '>' + inlineFormat(escapeHtml(trimmed)) + '</p>';
     }
 
     closeLists();
+    // Unclosed fence at end of file: render what we have rather than dropping it
+    if (inCode) {
+      html += '<pre' + srcAttr(codeStart, lines.length - 1) + '><code>' + escapeHtml(codeBuf.join('\n')) + '</code></pre>';
+    }
     return html;
   }
 
+  var tocHeadings = [];   // [{ h, a }] for the current document, used by the scrollspy
+
   function buildToc(contentEl, tocEl) {
     tocEl.innerHTML = '';
+    tocHeadings = [];
     var headings = Array.from(contentEl.querySelectorAll('h2, h3'));
     headings.forEach(function (h, i) {
       var id = 'toc-' + i;
       h.id = id;
       var li = document.createElement('li');
+      li.className = 'toc-' + h.tagName.toLowerCase();
       var a  = document.createElement('a');
       a.href = '#' + id;
       a.textContent = h.textContent || 'Section';
       li.appendChild(a);
       tocEl.appendChild(li);
+      tocHeadings.push({ h: h, a: a });
     });
+    updateTocActive();
     return headings.length;
   }
+
+  // Highlight the section currently under the header
+  function updateTocActive() {
+    var line = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--header-h')) || 0) + 40;
+    var current = null;
+    tocHeadings.forEach(function (t) {
+      t.a.classList.remove('is-active');
+      if (t.h.isConnected && t.h.getBoundingClientRect().top <= line) current = t;
+    });
+    if (!current && tocHeadings.length) current = tocHeadings[0];
+    if (current) current.a.classList.add('is-active');
+  }
+
+  var tocTicking = false;
+  window.addEventListener('scroll', function () {
+    if (tocTicking) return;
+    tocTicking = true;
+    requestAnimationFrame(function () { tocTicking = false; updateTocActive(); });
+  }, { passive: true });
+
+  var openTagGroups = {};   // type -> true when expanded; survives re-renders
 
   function buildTagsSidebar(contentEl, tagsSidebarEl, tagsContentEl) {
     var allTags = Array.from(contentEl.querySelectorAll('.annot-tag'));
     allTags.forEach(function (el, i) { el.id = 'annot-' + i; });
     tagsContentEl.innerHTML = '';
+    document.getElementById('tagsTotal').textContent = allTags.length || '';
 
     if (!allTags.length) { tagsSidebarEl.hidden = true; return; }
 
@@ -772,23 +950,70 @@
     });
 
     order.forEach(function (type) {
-      var label = document.createElement('p');
-      label.className = 'tags-group-label';
-      label.textContent = type + ' · ' + groups[type].length;
-      tagsContentEl.appendChild(label);
+      var open = !!openTagGroups[type];
+      var head = document.createElement('button');
+      head.type = 'button';
+      head.className = 'tag-group-head';
+      head.setAttribute('aria-expanded', open ? 'true' : 'false');
+      head.innerHTML = '<span class="tag-dot annot-tag--' + type.toLowerCase() + '"></span>' +
+                       '<span class="tag-group-name">' + type + '</span>' +
+                       '<span class="side-count">' + groups[type].length + '</span>' + iconSvg('chevron');
+      var items = document.createElement('div');
+      items.className = 'tag-group-items';
+      items.hidden = !open;
+      head.addEventListener('click', function () {
+        openTagGroups[type] = items.hidden;
+        items.hidden = !items.hidden;
+        head.setAttribute('aria-expanded', items.hidden ? 'false' : 'true');
+      });
 
       groups[type].forEach(function (el) {
         var a = document.createElement('a');
         a.href = '#' + el.id;
-        a.className = 'tags-entry annot-tag annot-tag--' + type.toLowerCase();
-        var preview = el.textContent;
-        a.textContent = preview.length > 44 ? preview.slice(0, 41) + '…' : preview;
-        tagsContentEl.appendChild(a);
+        a.className = 'tags-entry';
+        // Show just the note, without the "[TYPE: ...]" wrapper
+        var note = el.textContent.replace(/^\[[A-Z]+:\s*/, '').replace(/\]$/, '') || '(empty)';
+        a.textContent = note;
+        a.title = note;
+        a.addEventListener('click', function () { flashTarget(el); });
+        items.appendChild(a);
       });
+
+      tagsContentEl.appendChild(head);
+      tagsContentEl.appendChild(items);
     });
 
     tagsSidebarEl.hidden = false;
   }
+
+  // Briefly highlight whatever a sidebar link jumped to
+  function flashTarget(el) {
+    el.classList.remove('is-target');
+    void el.offsetWidth;
+    el.classList.add('is-target');
+    setTimeout(function () { el.classList.remove('is-target'); }, 1400);
+  }
+
+  // Collapsible sidebar sections. On narrow screens the outline stacks above
+  // the document, so start collapsed there to keep the text in view.
+  var startCollapsed = window.matchMedia('(max-width: 940px)').matches;
+  Array.from(document.querySelectorAll('.side-head')).forEach(function (head) {
+    head.insertAdjacentHTML('beforeend', iconSvg('chevron'));
+    if (startCollapsed) {
+      head.nextElementSibling.hidden = true;
+      head.setAttribute('aria-expanded', 'false');
+    }
+    head.addEventListener('click', function () {
+      var body = head.nextElementSibling;
+      body.hidden = !body.hidden;
+      head.setAttribute('aria-expanded', body.hidden ? 'false' : 'true');
+    });
+  });
+
+  document.getElementById('toc').addEventListener('click', function (e) {
+    var a = e.target.closest('a');
+    if (a) { var h = document.getElementById(a.getAttribute('href').slice(1)); if (h) flashTarget(h); }
+  });
 
   // ── MD Reader ──────────────────────────────────────────────────────────────
   var fileInput        = document.getElementById('mdFileInput');
@@ -801,85 +1026,320 @@
   var docTitle         = document.getElementById('docTitle');
   var docPath          = document.getElementById('docPath');
   var readerTokenCount = document.getElementById('readerTokenCount');
-  var readerEditBtn    = document.getElementById('readerEditBtn');
+  var modeRenderedBtn  = document.getElementById('readerModeRendered');
+  var modeSourceBtn    = document.getElementById('readerModeSource');
+  var mdAddBlock       = document.getElementById('mdAddBlock');
+  var openMdBtn        = document.getElementById('openMdBtn');
+  var readerDirtyEl    = document.getElementById('readerDirty');
+  var readerStatus     = document.getElementById('readerStatus');
   var readerAnnotBtn   = document.getElementById('readerAnnotBtn');
   readerAnnotBtn.innerHTML = 'Annotate <span class="btn-shortcut">' + kbdLabel + '</span>';
-  readerAnnotBtn.title = kbdTitle;
   var readerMdBtn      = document.getElementById('readerMdBtn');
   readerMdBtn.innerHTML = 'Markdown <span class="btn-shortcut">Ctrl+⇧D</span>';
-  readerMdBtn.title = 'Ctrl+Shift+D';
   var readerSaveBtn    = document.getElementById('readerSaveBtn');
+  var readerToNotesBtn = document.getElementById('readerToNotesBtn');
 
   var currentMdSource   = '';
   var currentMdFilename = 'document.md';
-  var readerEditMode    = false;
+  var readerMode        = 'rendered';   // 'rendered' | 'source'
+  var activeBlock       = null;         // { ta, start, end } while a block is being edited
+  var mdDirty           = false;
+  var docLoaded         = false;
+  var savedMdSource     = '';         // last loaded/saved text, for the modified marker
+  var undoStack         = [];         // previous versions of currentMdSource
+  var redoStack         = [];
+  var sourceModeStart   = '';         // text when Source mode was entered
+  var UNDO_LIMIT        = 200;
 
-  function exitEditMode() {
-    mdEditor.setAttribute('hidden', '');
-    mdContent.removeAttribute('hidden');
-    readerEditBtn.textContent = 'Edit';
-    readerAnnotBtn.setAttribute('hidden', '');
-    readerMdBtn.setAttribute('hidden', '');
-    readerEditMode = false;
+  function setDirty(dirty) {
+    mdDirty = dirty;
+    readerDirtyEl.textContent = dirty ? '• modified' : '';
+    readerDirtyEl.title = dirty ? 'Unsaved changes (Ctrl/⌘+S to save)' : '';
+  }
+
+  function refreshDirty() {
+    setDirty(currentMdSource !== savedMdSource);
+  }
+
+  // Record a document-level change (block commit, Source session) as one undo step
+  function pushHistory(prevSource) {
+    undoStack.push(prevSource);
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    redoStack = [];
+  }
+
+  function stepHistory(from, to) {
+    if (!from.length) return false;
+    to.push(currentMdSource);
+    currentMdSource = from.pop();
+    renderView(currentMdSource);
+    refreshDirty();
+    return true;
+  }
+
+  function undoReader() { return stepHistory(undoStack, redoStack); }
+  function redoReader() { return stepHistory(redoStack, undoStack); }
+
+  function updateReaderTokens(source) {
+    var tokenStr = estimateTokens(source);
+    readerTokenCount.textContent = tokenStr || '';
+    readerTokenCount.style.display = tokenStr ? '' : 'none';
   }
 
   function renderView(source) {
     mdContent.innerHTML = renderMarkdown(source);
     buildToc(mdContent, tocEl);
     buildTagsSidebar(mdContent, tagsSidebarEl, tagsContentEl);
-    var tokenStr = estimateTokens(source);
-    readerTokenCount.textContent = tokenStr || '';
-    readerTokenCount.style.display = tokenStr ? '' : 'none';
+    updateReaderTokens(source);
   }
 
-  readerEditBtn.addEventListener('click', function () {
-    if (!readerEditMode) {
-      mdEditor.value = currentMdSource;
+  // Textarea the Annotate / Markdown helpers should act on, or null
+  function readerEditTarget() {
+    if (readerMode === 'source') return mdEditor;
+    return activeBlock ? activeBlock.ta : null;
+  }
+
+  function updateHelperButtons() {
+    var noDoc = 'Open a file first';
+    [readerSaveBtn, readerToNotesBtn, modeRenderedBtn, modeSourceBtn].forEach(function (b) {
+      setUnavailable(b, !docLoaded, noDoc);
+    });
+    var noTarget = !docLoaded ? noDoc : 'Double-click a block to edit first';
+    var off = !readerEditTarget();
+    setUnavailable(readerAnnotBtn, off, noTarget);
+    setUnavailable(readerMdBtn, off, noTarget);
+  }
+
+  // ── Block editor (Rendered mode) ──
+  function autosize(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+
+  // start/end are 0-based source lines; end < start means "insert at start"
+  function openBlockEditor(el, start, end) {
+    var lines = currentMdSource.split('\n');
+    var ta = document.createElement('textarea');
+    ta.className = 'md-block-editor';
+    ta.spellcheck = notesArea.spellcheck;
+    ta.value = end >= start ? lines.slice(start, end + 1).join('\n') : '';
+    var wrap = document.createElement('div');
+    wrap.className = 'md-block-edit';
+    wrap.innerHTML = '<span class="md-block-edit-label">' + (el ? 'Editing' : 'New block') +
+                     ' · Esc to finish</span>';
+    wrap.appendChild(ta);
+    if (el) { el.replaceWith(wrap); } else { mdContent.appendChild(wrap); }
+    activeBlock = { ta: ta, start: start, end: end };
+
+    ta.addEventListener('input', function () { autosize(ta); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
+        e.preventDefault();
+        commitBlockEditor();
+      }
+    });
+    ta.addEventListener('blur', function () {
+      // Deferred so focus moving into a picker doesn't count as "done editing"
+      setTimeout(function () {
+        if (!activeBlock || activeBlock.ta !== ta) return;
+        var a = document.activeElement;
+        if (a === ta || !annotPicker.hidden || !mdPicker.hidden ||
+            annotPicker.contains(a) || mdPicker.contains(a)) return;
+        commitBlockEditor();
+      }, 0);
+    });
+
+    autosize(ta);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    updateHelperButtons();
+  }
+
+  function commitBlockEditor() {
+    if (!activeBlock) return;
+    var b = activeBlock;
+    activeBlock = null;
+    var lines    = currentMdSource.split('\n');
+    var oldText  = b.end >= b.start ? lines.slice(b.start, b.end + 1).join('\n') : '';
+    var newText  = b.ta.value.replace(/\s+$/, '');
+    var newLines = newText ? newText.split('\n') : [];
+    // New block appended after existing content: keep it a separate paragraph
+    if (b.end < b.start && newLines.length && b.start > 0 && lines[b.start - 1].trim()) {
+      newLines.unshift('');
+    }
+    if (newText !== oldText.replace(/\s+$/, '')) {
+      pushHistory(currentMdSource);
+      Array.prototype.splice.apply(lines, [b.start, Math.max(0, b.end - b.start + 1)].concat(newLines));
+      currentMdSource = lines.join('\n');
+      refreshDirty();
+    }
+    renderView(currentMdSource);
+    updateHelperButtons();
+  }
+
+  document.querySelector('#readerLayout .content-wrap').addEventListener('dblclick', function (e) {
+    if (readerMode !== 'rendered' || e.target.closest('.md-block-edit, #mdAddBlock')) return;
+    // Line ranges are stale until a pending edit is committed and re-rendered
+    if (activeBlock) { commitBlockEditor(); return; }
+    var block = e.target.closest('#mdContent > [data-src]');
+    if (block) {
+      var range = block.dataset.src.split('-');
+      window.getSelection().removeAllRanges();
+      openBlockEditor(block, +range[0], +range[1]);
+    } else if (!mdContent.contains(e.target)) {
+      appendBlock();
+    }
+  });
+
+  function appendBlock() {
+    var n = currentMdSource.split('\n').length;
+    openBlockEditor(null, n, n - 1);
+  }
+
+  mdAddBlock.addEventListener('click', function () {
+    if (activeBlock) commitBlockEditor();
+    appendBlock();
+  });
+
+  // ── Mode toggle ──
+  function setReaderMode(mode) {
+    if (mode === readerMode) return;
+    if (mode === 'source') {
+      commitBlockEditor();
+      mdEditor.value  = currentMdSource;
+      sourceModeStart = currentMdSource;
       mdContent.setAttribute('hidden', '');
+      mdAddBlock.setAttribute('hidden', '');
       mdEditor.removeAttribute('hidden');
-      readerEditBtn.textContent = 'View';
-      readerAnnotBtn.removeAttribute('hidden');
-      readerMdBtn.removeAttribute('hidden');
-      readerEditMode = true;
     } else {
       currentMdSource = mdEditor.value;
-      exitEditMode();
+      // The whole Source session becomes one step in the rendered-mode history
+      if (currentMdSource !== sourceModeStart) pushHistory(sourceModeStart);
+      mdEditor.setAttribute('hidden', '');
+      mdContent.removeAttribute('hidden');
+      mdAddBlock.removeAttribute('hidden');
       renderView(currentMdSource);
     }
+    readerMode = mode;
+    modeRenderedBtn.setAttribute('aria-pressed', mode === 'rendered' ? 'true' : 'false');
+    modeSourceBtn.setAttribute('aria-pressed', mode === 'source' ? 'true' : 'false');
+    updateHelperButtons();
+    if (mode === 'source') mdEditor.focus();
+  }
+
+  modeRenderedBtn.addEventListener('click', function () { setReaderMode('rendered'); });
+  modeSourceBtn.addEventListener('click', function () { setReaderMode('source'); });
+
+  mdEditor.addEventListener('input', function () {
+    currentMdSource = mdEditor.value;
+    refreshDirty();
+    updateReaderTokens(currentMdSource);
+  });
+
+  // ── Helpers, Save, To Notes ──
+  // Keep focus in the block editor when these are clicked (Safari doesn't focus buttons)
+  [readerAnnotBtn, readerMdBtn].forEach(function (b) {
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
   });
 
   readerAnnotBtn.addEventListener('click', function () {
     if (!annotPicker.hidden) { closeAnnotPicker(); return; }
-    openAnnotPicker(readerAnnotBtn, mdEditor);
+    var target = readerEditTarget();
+    if (target) openAnnotPicker(readerAnnotBtn, target);
   });
 
   readerMdBtn.addEventListener('click', function () {
     if (!mdPicker.hidden) { closeMdPicker(); return; }
-    openMdPicker(readerMdBtn, mdEditor);
+    var target = readerEditTarget();
+    if (target) openMdPicker(readerMdBtn, target);
   });
 
   readerSaveBtn.addEventListener('click', function () {
-    var text = readerEditMode ? mdEditor.value : currentMdSource;
+    commitBlockEditor();
+    var text = currentMdSource;
     if (!text.trim()) return;
     var name = currentMdFilename;
     if (!/\.(md|txt)$/i.test(name)) name += '.md';
     saveTextFile(text, name, function (result) {
-      if (result === 'error') docPath.textContent = 'Save failed.';
+      if (result === 'error') { flashStatus(readerStatus, 'Save failed.'); return; }
+      if (result === 'saved' || result === 'downloaded') {
+        savedMdSource = text;
+        refreshDirty();
+        flashStatus(readerStatus, result === 'saved' ? 'Saved.' : 'Downloaded.');
+      }
     });
   });
 
-  function displayMd(text, filename) {
+  readerToNotesBtn.addEventListener('click', function () {
+    commitBlockEditor();
+    if (!currentMdSource.trim()) return;
+    // Append rather than replace so existing notes are never lost
+    switchTab('notes');
+    var val      = notesArea.value;
+    var trimmed  = val.replace(/\s+$/, '');
+    var insertAt = trimmed ? trimmed.length + 2 : 0;
+    replaceText(notesArea, trimmed.length, val.length, (trimmed ? '\n\n' : '') + currentMdSource);
+    notesArea.setSelectionRange(insertAt, insertAt);
+    notesArea.blur();
+    notesArea.focus();
+    flashStatus(notesStatus, 'Added ' + currentMdFilename + '. Ctrl/⌘+Z to undo.');
+  });
+
+  // Ctrl/⌘+Z, Ctrl/⌘+Shift+Z, Ctrl+Y in Rendered mode. Inside any text field
+  // the browser's native undo applies instead.
+  document.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+    var key = e.key.toLowerCase();
+    var isUndo = key === 'z' && !e.shiftKey;
+    var isRedo = (key === 'z' && e.shiftKey) || (key === 'y' && !e.shiftKey);
+    if (!isUndo && !isRedo) return;
+    var a = document.activeElement;
+    if (a && (a.tagName === 'TEXTAREA' || a.tagName === 'INPUT' || a.isContentEditable)) return;
+    if (panels.reader.hidden || readerMode !== 'rendered') return;
+    e.preventDefault();
+    if (isUndo) { undoReader(); } else { redoReader(); }
+  });
+
+  // Ctrl/⌘+S saves in whichever tab is showing
+  document.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 's') return;
+    e.preventDefault();
+    if (!panels.notes.hidden) { saveBtn.click(); }
+    else if (docLoaded) { readerSaveBtn.click(); }
+  });
+
+  openMdBtn.addEventListener('click', function () { fileInput.click(); });
+
+  document.getElementById('outlineBtn').addEventListener('click', function () {
+    applyTocSetting(!tocShown);
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (mdDirty || activeBlock) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  function displayMd(text, filename, note) {
+    activeBlock       = null;
+    docLoaded         = true;
     currentMdSource   = text;
     currentMdFilename = filename;
-    if (readerEditMode) exitEditMode();
+    savedMdSource     = text;
+    sourceModeStart   = text;
+    undoStack = [];
+    redoStack = [];
     docTitle.textContent = filename;
-    docPath.textContent  = filename;
+    docPath.textContent  = note || '';
+    docPath.hidden       = !note;
+    setDirty(false);
+    if (readerMode === 'source') mdEditor.value = text;
     renderView(text);
     readerLayout.removeAttribute('hidden');
-    readerEditBtn.removeAttribute('hidden');
-    readerSaveBtn.removeAttribute('hidden');
+    updateHelperButtons();
     readerLayout.classList.toggle('toc-collapsed', !tocShown);
+    window.scrollTo(0, 0);
   }
+
+  updateHelperButtons();
 
   fileInput.addEventListener('change', function () {
     var file = fileInput.files[0];
@@ -900,6 +1360,8 @@
       .then(function (text) { displayMd(text, 'README.md'); })
       .catch(function () { docTitle.textContent = 'Could not load README.md.'; });
   });
+
+  Array.from(document.querySelectorAll('[data-icon]')).forEach(applyIcon);
 
   // ── MCP Bridge ─────────────────────────────────────────────────────────────
   // Optional: only connects when Context Pad is served locally by
@@ -922,8 +1384,7 @@
         var msg;
         try { msg = JSON.parse(e.data); } catch (err) { return; }
         if (msg.type === 'show_doc') {
-          displayMd(msg.content, msg.title || 'From agent');
-          docPath.textContent = 'Pushed from an AI agent via MCP';
+          displayMd(msg.content, msg.title || 'From agent', 'Pushed from an AI agent via MCP');
           switchTab('reader');
         } else if (msg.type === 'config') {
           agentDocsHint.textContent = 'Docs an agent pushes via show_doc are saved here.';

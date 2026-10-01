@@ -83,22 +83,63 @@
     </div>
   </dialog>
 
+  <!-- Action bar: mounted into the sticky header by app.js; one toolbar per tab -->
+  <div id="actionBar" class="actionbar">
+    <div class="actionbar-inner" data-for="notes" role="toolbar" aria-label="Notes actions">
+      <div class="tb-group">
+        <button id="copyAll" class="btn primary" type="button" data-icon="copy" title="Copy all to clipboard">Copy all</button>
+      </div>
+      <div class="tb-group">
+        <button id="saveNotes" class="btn" type="button" data-icon="save" title="Save notes to a file (Ctrl/⌘+S)">Save</button>
+      </div>
+      <div class="tb-group">
+        <button id="annotBtn" class="btn" type="button" data-icon="tag">Annotate</button>
+        <button id="mdBtn" class="btn" type="button" data-icon="markdown">Markdown</button>
+      </div>
+      <div class="tb-info">
+        <span id="notesStatus" class="tb-status" aria-live="polite"></span>
+        <span id="tokenCount" class="badge token-badge" style="display:none"></span>
+      </div>
+      <div class="tb-group">
+        <button id="clearAll" class="btn btn-quiet" type="button" data-icon="trash" title="Clear notes (Ctrl/⌘+Z to undo)">Clear</button>
+      </div>
+    </div>
+
+    <div class="actionbar-inner" data-for="reader" role="toolbar" aria-label="Reader actions" hidden>
+      <div class="tb-group">
+        <button id="openMdBtn" class="btn primary" type="button" data-icon="folder" title="Open a .md file">Open</button>
+        <input type="file" id="mdFileInput" accept=".md,.txt" class="sr-only" tabindex="-1" />
+        <button id="readerSaveBtn" class="btn" type="button" data-icon="save" title="Save to file (Ctrl/⌘+S)">Save</button>
+        <button id="readerToNotesBtn" class="btn btn-quiet" type="button" data-icon="toNotes" title="Copy this document into the Notes tab">To Notes</button>
+      </div>
+      <div class="tb-group">
+        <div id="readerModeGroup" class="seg" role="group" aria-label="View mode">
+          <button id="readerModeRendered" class="btn" type="button" aria-pressed="true" title="Formatted view — double-click a block to edit it">Rendered</button>
+          <button id="readerModeSource" class="btn" type="button" aria-pressed="false" title="Edit the raw Markdown">Source</button>
+        </div>
+      </div>
+      <div class="tb-group">
+        <button id="readerAnnotBtn" class="btn" type="button" data-icon="tag">Annotate</button>
+        <button id="readerMdBtn" class="btn" type="button" data-icon="markdown">Markdown</button>
+      </div>
+      <div class="tb-info">
+        <span id="readerDirty" class="tb-dirty"></span>
+        <span id="readerStatus" class="tb-status" aria-live="polite"></span>
+        <span id="readerTokenCount" class="badge token-badge" style="display:none"></span>
+      </div>
+      <div class="tb-group">
+        <button id="outlineBtn" class="btn btn-icon" type="button" data-icon="sidebar" aria-pressed="false" title="Show / hide outline" aria-label="Show or hide outline"></button>
+      </div>
+    </div>
+  </div>
+
   <main class="page" role="main">
 
     <!-- Tab: Notes -->
     <div id="panel-notes" class="tab-panel" role="tabpanel" aria-labelledby="tab-notes">
       <section class="flow-section" aria-label="Notes editor">
-        <textarea id="quickNotes" class="textpad" placeholder="Type or paste here..."
+        <textarea id="quickNotes" class="textpad notes-pad" placeholder="Type or paste here..."
           spellcheck="true" autocorrect="on" autocapitalize="sentences"></textarea>
-        <div class="toolbar">
-          <button id="copyAll" class="btn primary" type="button">Copy all</button>
-          <button id="saveNotes" class="btn" type="button">Save</button>
-          <button id="annotBtn" class="btn" type="button">Annotate</button>
-          <button id="mdBtn" class="btn" type="button">Markdown</button>
-          <button id="clearAll" class="btn" type="button">Clear</button>
-          <span id="notesStatus" class="badge" aria-live="polite">Ready.</span>
-          <span id="tokenCount" class="badge token-badge" aria-live="polite" style="display:none"></span>
-        </div>
       </section>
       <p class="footer-note">No backend. Saved in browser storage.</p>
     </div>
@@ -108,31 +149,23 @@
       <section class="page-intro">
         <p class="eyebrow">MD Reader</p>
         <h1 class="page-title" id="docTitle">No file loaded.</h1>
-        <p class="page-subtitle" id="docPath">Pick a local .md file to render it here.</p>
+        <p class="page-subtitle" id="docPath">Open a local .md file to render it here, or <a href="#" id="loadReadme">view the README</a>.</p>
       </section>
-      <div class="reader-bar">
-        <label for="mdFileInput" class="btn primary">Open .md file</label>
-        <input type="file" id="mdFileInput" accept=".md,.txt" class="sr-only" />
-        <button id="readerEditBtn" class="btn" type="button" hidden>Edit</button>
-        <button id="readerAnnotBtn" class="btn" type="button" hidden>Annotate</button>
-        <button id="readerMdBtn" class="btn" type="button" hidden>Markdown</button>
-        <button id="readerSaveBtn" class="btn" type="button" hidden>Save</button>
-        <span id="readerTokenCount" class="badge" aria-live="polite" style="display:none"></span>
-        <a href="#" id="loadReadme" class="readme-link">README.md</a>
-      </div>
       <section class="layout-with-sidebar" id="readerLayout" hidden>
         <article class="content-wrap">
           <textarea id="mdEditor" class="textpad md-editor" hidden></textarea>
           <section class="content" id="mdContent"></section>
+          <button id="mdAddBlock" class="md-add-block" type="button" data-icon="plus" title="Add a block at the end (or double-click empty space)">New block</button>
         </article>
-        <aside class="sidebar" aria-label="Section navigation">
-          <h2>Jump to section</h2>
-          <ul class="toc" id="toc"></ul>
-          <div id="tagsSidebar" hidden>
-            <hr class="sidebar-divider">
-            <h2>Annotations</h2>
+        <aside class="sidebar" id="readerSidebar" aria-label="Document outline">
+          <section class="side-sec">
+            <button type="button" class="side-head" aria-expanded="true">Jump to section</button>
+            <ul class="toc" id="toc"></ul>
+          </section>
+          <section class="side-sec" id="tagsSidebar" hidden>
+            <button type="button" class="side-head" aria-expanded="true">Annotations <span id="tagsTotal" class="side-count"></span></button>
             <div id="tagsContent" class="tags-list"></div>
-          </div>
+          </section>
         </aside>
       </section>
       <p class="footer-note">File is read locally. Nothing is uploaded.</p>
