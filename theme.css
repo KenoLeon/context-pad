@@ -1263,6 +1263,19 @@ pre code {
 .seg .btn[aria-disabled="true"][aria-pressed="true"] { opacity: 0.6; }
 
 /* Notes pad fills the space under the header */
+/* Rendered view of the notes: same footprint as the textarea */
+.notes-preview {
+  min-height: calc(100vh - var(--header-h, 120px) - 6.5rem);
+  padding: 0.6rem 1.2rem 1rem;
+  border: 1px solid var(--border-dim);
+  border-radius: 2px;
+  cursor: text;
+}
+
+.notes-preview[hidden] { display: none; }
+
+.notes-preview-empty { color: var(--muted); }
+
 .notes-pad {
   min-height: calc(100vh - var(--header-h, 120px) - 6.5rem);
 }

@@ -707,6 +707,37 @@
     updateNotesCount();
   });
 
+  // ── Notes view: Source (textarea) / Rendered (read-only preview) ──────────
+  // One text, two views: the preview is rebuilt from the textarea each time.
+  var NOTES_VIEW_KEY   = 'contextPadNotesView';
+  var notesPreview     = document.getElementById('notesPreview');
+  var notesRenderedBtn = document.getElementById('notesModeRendered');
+  var notesSourceBtn   = document.getElementById('notesModeSource');
+
+  function setNotesView(view, focus) {
+    var rendered = view === 'rendered';
+    if (rendered) {
+      notesPreview.innerHTML = notesArea.value.trim()
+        ? renderMarkdown(notesArea.value)
+        : '<p class="notes-preview-empty">Nothing to preview yet.</p>';
+    }
+    notesArea.hidden    = rendered;
+    notesPreview.hidden = !rendered;
+    notesRenderedBtn.setAttribute('aria-pressed', rendered ? 'true' : 'false');
+    notesSourceBtn.setAttribute('aria-pressed', rendered ? 'false' : 'true');
+    [annotBtn, mdBtn, clearBtn].forEach(function (b) {
+      setUnavailable(b, rendered, 'Switch to Source to edit');
+    });
+    localStorage.setItem(NOTES_VIEW_KEY, view);
+    if (focus && !rendered) notesArea.focus();
+  }
+
+  notesRenderedBtn.addEventListener('click', function () { setNotesView('rendered'); });
+  notesSourceBtn.addEventListener('click', function () { setNotesView('source', true); });
+  notesPreview.addEventListener('dblclick', function () { setNotesView('source', true); });
+
+  setNotesView(localStorage.getItem(NOTES_VIEW_KEY) === 'rendered' ? 'rendered' : 'source');
+
   // ── Markdown Parser ────────────────────────────────────────────────────────
   function escapeHtml(text) {
     return String(text)
@@ -1275,6 +1306,7 @@
     if (!currentMdSource.trim()) return;
     // Append rather than replace so existing notes are never lost
     switchTab('notes');
+    setNotesView('source');
     var val      = notesArea.value;
     var trimmed  = val.replace(/\s+$/, '');
     var insertAt = trimmed ? trimmed.length + 2 : 0;

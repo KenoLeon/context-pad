@@ -93,6 +93,12 @@
         <button id="saveNotes" class="btn" type="button" data-icon="save" title="Save notes to a file (Ctrl/⌘+S)">Save</button>
       </div>
       <div class="tb-group">
+        <div class="seg" role="group" aria-label="Notes view">
+          <button id="notesModeRendered" class="btn" type="button" aria-pressed="false" title="Read your notes formatted — double-click to go back to editing">Rendered</button>
+          <button id="notesModeSource" class="btn" type="button" aria-pressed="true" title="Edit the text">Source</button>
+        </div>
+      </div>
+      <div class="tb-group">
         <button id="annotBtn" class="btn" type="button" data-icon="tag">Annotate</button>
         <button id="mdBtn" class="btn" type="button" data-icon="markdown">Markdown</button>
       </div>
@@ -140,6 +146,7 @@
       <section class="flow-section" aria-label="Notes editor">
         <textarea id="quickNotes" class="textpad notes-pad" placeholder="Type or paste here..."
           spellcheck="true" autocorrect="on" autocapitalize="sentences"></textarea>
+        <div id="notesPreview" class="content notes-preview" hidden></div>
       </section>
       <p class="footer-note">No backend. Saved in browser storage.</p>
     </div>

@@ -59,6 +59,9 @@ storing it.
 - **Save** — save notes as a `.md` file (File System Access API in
   Chrome/Edge, download fallback in Safari/Firefox)
 - Live **token and word count** so you know it'll fit before you paste
+- **Rendered / Source** toggle — read your notes formatted (headings,
+  tables, annotation tags) without leaving the tab; double-click the
+  rendered view to go back to editing
 - **Annotate** `Ctrl+Shift+A` — picker that inserts an annotation tag
   (`[EDIT: ]`, `[WRONG: ]`, …) at the cursor
 - **Markdown** `Ctrl+Shift+D` — picker with 14 CommonMark snippets
@@ -173,3 +176,4 @@ Spell check in the notes pad relies on the browser and OS:
 | `contextPadFontSize` | Selected font size |
 | `contextPadTocVisible` | TOC sidebar shown/hidden in MD reader |
 | `contextPadAnnotations` | User-configured annotation tag types |
+| `contextPadNotesView` | Notes tab view: Source or Rendered |
