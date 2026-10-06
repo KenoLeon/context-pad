@@ -666,13 +666,46 @@
   notesArea.value = localStorage.getItem(NOTES_KEY) || '';
   updateNotesCount();
 
+  // Quiet save indicator: a dot by the token count that briefly glows
+  var notesSavedDot = document.getElementById('notesSavedDot');
+  function pulseSaved() {
+    notesSavedDot.classList.remove('is-pulsing');
+    void notesSavedDot.offsetWidth;   // restart the animation
+    notesSavedDot.classList.add('is-pulsing');
+  }
+
+  // The notes box grows with its content instead of scrolling inside itself
+  function growNotes() {
+    if (notesArea.hidden) return;
+    var scrollY = window.scrollY;       // collapsing to 'auto' can jump the page
+    notesArea.style.height = 'auto';
+    notesArea.style.height = notesArea.scrollHeight + 2 + 'px';
+    window.scrollTo(0, scrollY);
+    // Typing at the end: keep the new line in view below the sticky header
+    if (document.activeElement === notesArea && notesArea.selectionEnd === notesArea.value.length) {
+      var overshoot = notesArea.getBoundingClientRect().bottom - window.innerHeight + 24;
+      if (overshoot > 0) window.scrollBy(0, overshoot);
+    }
+  }
+
+  // Re-measure when the box's width changes (window, content width, font size)
+  var notesWidth = 0;
+  if (window.ResizeObserver) {
+    new ResizeObserver(function () {
+      if (notesArea.offsetWidth !== notesWidth) { notesWidth = notesArea.offsetWidth; growNotes(); }
+    }).observe(notesArea);
+  }
+
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(growNotes);
+
   var saveTimer;
   notesArea.addEventListener('input', function () {
     clearTimeout(saveTimer);
     updateNotesCount();
+    growNotes();
     saveTimer = setTimeout(function () {
       localStorage.setItem(NOTES_KEY, notesArea.value);
-      flashStatus(notesStatus, 'Saved locally.');
+      pulseSaved();
     }, 800);
   });
 
@@ -722,6 +755,7 @@
         : '<p class="notes-preview-empty">Nothing to preview yet.</p>';
     }
     notesArea.hidden    = rendered;
+    growNotes();
     notesPreview.hidden = !rendered;
     notesRenderedBtn.setAttribute('aria-pressed', rendered ? 'true' : 'false');
     notesSourceBtn.setAttribute('aria-pressed', rendered ? 'false' : 'true');

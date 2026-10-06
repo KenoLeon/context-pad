@@ -1276,8 +1276,27 @@ pre code {
 
 .notes-preview-empty { color: var(--muted); }
 
+/* Notes save indicator: muted dot that glows green briefly on each save */
+.save-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--line);
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.save-dot.is-pulsing { animation: save-pulse 1.2s ease; }
+
+@keyframes save-pulse {
+  0%, 35% { background: #4caf78; opacity: 1; box-shadow: 0 0 0 3px rgba(76, 175, 120, 0.25); }
+  100%    { background: var(--line); opacity: 0.6; box-shadow: 0 0 0 3px transparent; }
+}
+
 .notes-pad {
   min-height: calc(100vh - var(--header-h, 120px) - 6.5rem);
+  resize: none;      /* grows with its content (see growNotes) */
+  overflow: hidden;
 }
 
 /* Jump targets land below the sticky header */
